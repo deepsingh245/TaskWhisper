@@ -77,7 +77,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
 
   const handleSave = () => {
     onOpenChange(false);
-    // In a real app, this would dispatch an action or call an API
+    
   };
 
   return (
@@ -151,7 +151,6 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                       mode="single"
                       selected={date}
                       onSelect={setDate}
-                      initialFocus
                     />
                   </PopoverContent>
                 </Popover>

@@ -1,7 +1,7 @@
-const supabase = require('../config/db');
+import { supabase } from '../config/supabase';
 
-class User {
-    static async getProfile(userId) {
+export default class User {
+    static async getProfile(userId: string) {
         const { data, error } = await supabase
             .from('profiles')
             .select('*')
@@ -12,7 +12,7 @@ class User {
         return data;
     }
 
-    static async updateProfile(userId, updates) {
+    static async updateProfile(userId: string, updates: any) {
         const { data, error } = await supabase
             .from('profiles')
             .update(updates)
@@ -23,5 +23,3 @@ class User {
         return data;
     }
 }
-
-module.exports = User;

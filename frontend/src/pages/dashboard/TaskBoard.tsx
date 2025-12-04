@@ -92,10 +92,26 @@ const TaskBoard = () => {
                     ref={provided.innerRef}
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
-                    className={`cursor-grab active:cursor-grabbing border-none shadow-sm hover:shadow-md transition-all ${
+                    className={`cursor-grab active:cursor-grabbing rounded-md border-none shadow-sm hover:shadow-md transition-all ${
                       snapshot.isDragging ? 'shadow-xl ring-2 ring-primary/20 rotate-2' : ''
                     }`}
-                  >                      
+                  >
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <Badge variant="outline" className="font-normal text-xs opacity-70">
+                          {task.tag}
+                        </Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger>
+                              <MoreHorizontal className="h-3 w-3" />
+                            </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>Edit</DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-500">Delete</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      
                       <h4 className="font-medium text-sm leading-tight">{task.title}</h4>
                       
                       <div className="flex items-center justify-between pt-2">
@@ -114,7 +130,7 @@ const TaskBoard = () => {
                           {task.priority}
                         </Badge>
                       </div>
-                    {/* </CardContent> */}
+                    </CardContent>
                   </Card>
                 )}
               </Draggable>
