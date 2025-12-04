@@ -1,12 +1,22 @@
-// import { SmoothCursor } from "./components/ui/smooth-cursor";
-import Home from "./Home";
+import { Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './pages/auth/LoginPage';
+import SignupPage from './pages/auth/SignupPage';
+import DashboardLayout from './pages/dashboard/DashboardLayout';
+import TaskBoard from './pages/dashboard/TaskBoard';
+import TaskList from './pages/dashboard/TaskList';
 
 function App() {
   return (
-    <div className="">
-      {/* <SmoothCursor /> */}
-      <Home />
-    </div>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<Navigate to="/dashboard/board" replace />} />
+          <Route path="board" element={<TaskBoard />} />
+          <Route path="list" element={<TaskList />} />
+        </Route>
+      </Routes> 
   );
 }
 
