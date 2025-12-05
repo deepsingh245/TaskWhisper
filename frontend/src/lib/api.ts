@@ -1,4 +1,3 @@
-
 /// <reference types="vite/client" />
 import axios, { AxiosRequestConfig, Method } from "axios";
 import { ApiResponse } from "@/interfaces/api.interface";
@@ -6,12 +5,13 @@ import { getAccessToken, setAccessToken, clearAccessToken } from "./token";
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
+// Main axios instance for API requests
 const axiosInstance = axios.create({
   baseURL: API_URL,
-  withCredentials: true, // Important for HttpOnly cookies
+  withCredentials: true, // Send HttpOnly cookies
 });
 
-// Request Interceptor
+// Request Interceptor: attach access token
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = getAccessToken();
@@ -23,33 +23,89 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor
+// Concurrency handling for refresh token
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};
+
+// Response Interceptor: handle 401 and refresh
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Prevent infinite loops
+    // Skip auth routes from refresh logic
+    const isAuthRoute =
+      originalRequest.url.includes("/api/auth/login") ||
+      originalRequest.url.includes("/api/auth/signup") ||
+      originalRequest.url.includes("/api/auth/refresh");
+
+    if (isAuthRoute) {
+      return Promise.reject(error);
+    }
+
+    // If access token expired
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise(function (resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return axiosInstance(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
-        // Attempt to refresh token
-        const response = await axiosInstance.post("/api/auth/refresh");
-        
+        // Create a separate axios instance for refresh
+        const refreshAxios = axios.create({
+          baseURL: API_URL,
+          withCredentials: true,
+        });
+
+        const response = await refreshAxios.post("/api/auth/refresh");
+
         const { accessToken } = response.data;
+
+        if (!accessToken) {
+          throw new Error("No access token returned");
+        }
+
+        // Save new access token
         setAccessToken(accessToken);
+
+        // Process queue
+        processQueue(null, accessToken);
 
         // Retry original request with new token
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        console.log("🚀 ~ refreshError:", refreshError)
-        // Refresh failed - clear token and redirect to login
-        debugger;
-        // clearAccessToken();
-        // window.location.href = "/login";
+        processQueue(refreshError, null);
+        console.error("Refresh token failed:", refreshError);
+
+        clearAccessToken();
+        window.location.href = "/login"; // Redirect to login
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 
@@ -57,6 +113,7 @@ axiosInstance.interceptors.response.use(
   }
 );
 
+// Generic API request function
 export async function apiRequest<TResponse = any, TBody = any>(
   url: string,
   method: Method = "GET",
@@ -64,31 +121,24 @@ export async function apiRequest<TResponse = any, TBody = any>(
   config?: AxiosRequestConfig
 ): Promise<ApiResponse<TResponse>> {
   try {
-    // If url is absolute (starts with http), use it directly, otherwise let axiosInstance handle baseURL
-    // However, our existing code passes full URLs from API_ROUTES. 
-    // We should probably strip the baseURL if it matches, or just use the instance.
-    // Given the existing API_ROUTES have VITE_BACKEND_URL, we might need to handle this.
-    // Actually, axios instance baseURL is prepended ONLY if url is relative.
-    // If we pass a full URL, axios uses it.
-    
     const response = await axiosInstance.request<TResponse>({
       url,
       method,
       data: body,
       ...config,
     });
-    console.log("🚀 ~ apiRequest ~ response:", response)
 
     return {
       success: true,
       data: response.data,
     };
   } catch (err: any) {
+    console.log("🚀 ~ apiRequest ~ err:", err)
     const message =
-      err?.response?.data?.message ||
+      err?.response?.data?.error ||
       err?.message ||
       "Unknown error occurred";
-    console.log("🚀 ~ apiRequest ~ message:", message)
+      
 
     return {
       success: false,

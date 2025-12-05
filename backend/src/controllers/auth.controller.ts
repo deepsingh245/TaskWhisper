@@ -19,7 +19,7 @@ export const signup = async (req: Request, res: Response) => {
       res.cookie('refreshToken', data.session.refresh_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/',
       });
     }
@@ -48,7 +48,7 @@ export const login = async (req: Request, res: Response) => {
       res.cookie('refreshToken', data.session.refresh_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/',
       });
     }
@@ -67,6 +67,7 @@ export const login = async (req: Request, res: Response) => {
 export const refresh = async (req: Request, res: Response) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
+    console.log("🚀 ~ refresh ~ refreshToken:", refreshToken)
     if (!refreshToken) return res.status(401).json({ error: 'No refresh token' });
 
     const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
@@ -77,7 +78,7 @@ export const refresh = async (req: Request, res: Response) => {
       res.cookie('refreshToken', data.session.refresh_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/',
       });
     }

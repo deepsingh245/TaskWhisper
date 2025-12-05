@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createTask } from '@/lib/task';
 import { v4 as uuidv4 } from 'uuid';
-import { successToast, dangerToast } from '@/components/shared/toast';
+import { successToast, dangerToast } from '@/shared/toast';
 
 interface NewTaskModalProps {
   open: boolean;
@@ -34,6 +34,10 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
   const [date, setDate] = React.useState<Date | undefined>(undefined)
+  const mediaRecorderRef = useRef(null);
+  const [recording, setRecording] = useState(false);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [transcriptPreview, setTranscriptPreview] = useState('');
 
   const resetState = () => {
     setIsListening(false);
@@ -50,15 +54,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
     if (!open) resetState();
   }, [open]);
 
-  const handleStartListening = () => {
-    // setIsListening(true);
-    // setIsProcessing(true);
 
-  };
-
-  useEffect(() => {
-    console.log(isOpen);
-  }, [isOpen]);
 
   const handleSave = async () => {
     const uuid = uuidv4();
@@ -82,6 +78,72 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
       dangerToast(res.message || 'Failed to create task');
     }
   };
+
+  // const handleStartListening = () => {
+  //   try {
+  //     setIsListening(true);
+  //     setIsProcessing(true);
+  //     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  //     setPermissionGranted(true);
+  //     const mediaRecorder = new MediaRecorder(stream);
+  //     mediaRecorderRef.current = mediaRecorder;
+
+  //     const chunks = [];
+  //     mediaRecorder.addEventListener('dataavailable', (e) => {
+  //       if (e.data && e.data.size > 0) {
+  //         chunks.push(e.data);
+  //       }
+  //     });
+
+  //     mediaRecorder.addEventListener('stop', async () => {
+  //       const blob = new Blob(chunks, { type: 'audio/webm' });
+  //       await uploadAudio(blob);
+  //       // stop all tracks
+  //       stream.getTracks().forEach((t) => t.stop());
+  //     });
+
+  //     mediaRecorder.start();
+  //     setRecording(true);
+  //     setTranscriptPreview('');
+  //   } catch (err) {
+  //     console.error('Microphone permission denied or error:', err);
+  //     alert('Microphone permission is required.');
+  //   }
+  // }
+
+  // function stopRecording() {
+  //   if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+  //     mediaRecorderRef.current.stop();
+  //   }
+  //   setRecording(false);
+  // }
+
+  // async function uploadAudio(blob) {
+  //   try {
+  //     setLoading(true);
+  //     const form = new FormData();
+  //     form.append('audio', blob, 'recording.webm');
+
+  //     const resp = await axios.post('http://localhost:4000/api/voice-task', form, {
+  //       headers: {
+  //         'Content-Type': 'multipart/form-data'
+  //       },
+  //       timeout: 120000
+  //     });
+
+  //     if (resp.data) {
+  //       setTranscriptPreview(resp.data.transcript || '');
+  //       onResult(resp.data);
+  //     } else {
+  //       alert('No response from server.');
+  //     }
+  //   } catch (err) {
+  //     console.error('Upload/transcription error:', err);
+  //     alert('Failed to transcribe audio. See console for details.');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -198,7 +260,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                       "h-24 w-24 rounded-full shadow-2xl transition-all duration-300 relative z-10",
                       isListening ? "bg-red-500 hover:bg-red-600" : "bg-gradient-to-r from-primary to-violet-600"
                     )}
-                    onClick={handleStartListening}
+                    // onClick={handleStartListening}
                     disabled={isProcessing}
                   >
                     {isProcessing ? (

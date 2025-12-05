@@ -4,14 +4,13 @@ import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// Apply auth middleware to all routes in this router
-router.use(authMiddleware);
-
+// Public routes
 router.post('/signup', signup);
 router.post('/login', login);
+router.post('/refresh', refresh); // Refresh uses cookies, not Bearer token
 
-// Protected routes – need a valid refresh‑token cookie
-router.post('/refresh', refresh);
+// Protected routes
+router.use(authMiddleware);
 router.post('/logout', logout);
 router.get('/current-user', getCurrentUser);
 

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  ListTodo, 
-  Settings, 
-  LogOut, 
-  Menu, 
-  Bell, 
+import {
+  LayoutDashboard,
+  ListTodo,
+  Settings,
+  LogOut,
+  Menu,
+  Bell,
   Search,
   Plus
 } from 'lucide-react';
@@ -16,13 +16,21 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import NewTaskModal from '@/components/tasks/NewTaskModal';
+import { logout } from '@/lib/auth';
+import { dangerToast } from '@/shared/toast';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
 
-  const handleLogout = () => {
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      dangerToast('Logout failed');
+    }
   };
 
   const SidebarContent = () => (
@@ -34,26 +42,24 @@ const DashboardLayout = () => {
       </div>
       <div className="px-3 py-2 flex-1">
         <div className="space-y-1">
-          <NavLink 
-            to="/dashboard/board" 
-            className={({ isActive }) => 
-              `flex items-center gap-3 px-3 py-2 rounded-md transition-all ${
-                isActive 
-                  ? 'bg-primary/10 text-primary font-medium' 
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          <NavLink
+            to="/dashboard/board"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-md transition-all ${isActive
+                ? 'bg-primary/10 text-primary font-medium'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`
             }
           >
             <LayoutDashboard className="h-5 w-5" />
             Board View
           </NavLink>
-          <NavLink 
-            to="/dashboard/list" 
-            className={({ isActive }) => 
-              `flex items-center gap-3 px-3 py-2 rounded-md transition-all ${
-                isActive 
-                  ? 'bg-primary/10 text-primary font-medium' 
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          <NavLink
+            to="/dashboard/list"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-md transition-all ${isActive
+                ? 'bg-primary/10 text-primary font-medium'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`
             }
           >
@@ -73,8 +79,8 @@ const DashboardLayout = () => {
         </div>
       </div>
       <div className="p-4">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
           onClick={handleLogout}
         >
@@ -109,15 +115,15 @@ const DashboardLayout = () => {
             </Sheet>
             <div className="relative hidden md:block w-96">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search tasks..." 
+              <Input
+                placeholder="Search tasks..."
                 className="pl-9 bg-muted/50 border-none focus-visible:ring-1"
               />
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            <Button 
+            <Button
               onClick={() => setIsNewTaskOpen(true)}
               className="bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 shadow-lg shadow-primary/20"
             >
@@ -138,7 +144,7 @@ const DashboardLayout = () => {
         {/* Page Content */}
         <main className="flex-1 overflow-auto p-4 md:p-6 relative">
           <div className="absolute inset-0 pointer-events-none z-0">
-             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background" />
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background" />
           </div>
           <div className="relative z-10 max-w-7xl mx-auto">
             <Outlet />

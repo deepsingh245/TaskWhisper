@@ -1,4 +1,4 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -12,16 +12,32 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MoreHorizontal, ArrowUpDown, Calendar, Flag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Task } from '@/interfaces/task.interface';
+import { getTasks } from '@/lib/task';
 
-const tasks = [
-  { id: 't1', title: 'Research competitors', priority: 'high', date: 'Tomorrow', status: 'To Do', tag: 'Strategy' },
-  { id: 't2', title: 'Draft user stories', priority: 'medium', date: 'Dec 12', status: 'To Do', tag: 'Product' },
-  { id: 't3', title: 'Design system updates', priority: 'critical', date: 'Today', status: 'In Progress', tag: 'Design' },
-  { id: 't4', title: 'Setup project repo', priority: 'low', date: 'Dec 01', status: 'Done', tag: 'Dev' },
-  { id: 't5', title: 'Client meeting', priority: 'high', date: 'Dec 15', status: 'To Do', tag: 'Sales' },
-];
 
 const TaskList = () => {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      setLoading(true);
+      try {
+        const response = await getTasks();
+        if (response.success) {
+          setTasks(response.data as Task[]);
+        } else {
+          console.error('Failed to fetch tasks', response.message);
+        }
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+  }, []);
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'critical': return 'bg-red-500/10 text-red-500 hover:bg-red-500/20';
@@ -84,7 +100,7 @@ const TaskList = () => {
                   <TableCell>
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Calendar className="mr-2 h-4 w-4" />
-                      {task.date}
+                      {task.due_date}
                     </div>
                   </TableCell>
                   <TableCell>
