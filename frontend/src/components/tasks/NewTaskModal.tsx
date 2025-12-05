@@ -8,10 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Mic, Calendar as CalendarIcon, Check, Loader2, Play, Pause, RefreshCw } from 'lucide-react';
+import { Mic, Calendar as CalendarIcon, Check, Loader2, Play, Pause, RefreshCw, ChevronDownIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createTask } from '@/lib/task';
+import { v4 as uuidv4 } from 'uuid';
+import { successToast, dangerToast } from '@/components/shared/toast';
 
 interface NewTaskModalProps {
   open: boolean;
@@ -19,17 +22,18 @@ interface NewTaskModalProps {
 }
 
 const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
-  const [activeTab, setActiveTab] = useState('manual');
+  const [activeTab, setActiveTab] = useState<'manual' | 'voice'>('manual');
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [parsedData, setParsedData] = useState<any>(null);
-  
+  const [isOpen, setIsOpen] = useState(false);
+
   // Form State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [date, setDate] = React.useState<Date | undefined>(undefined)
 
   const resetState = () => {
     setIsListening(false);
@@ -47,37 +51,36 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
   }, [open]);
 
   const handleStartListening = () => {
-    setIsListening(true);
-    // Simulate listening duration
-    setTimeout(() => {
-      setIsListening(false);
-      setIsProcessing(true);
-      // Simulate processing
-      setTimeout(() => {
-        const mockTranscript = "Create a high priority task to review the pull request for the authentication module by tomorrow evening";
-        const mockParsed = {
-          title: "Review the pull request for the authentication module",
-          priority: "high",
-          dueDate: new Date(new Date().setDate(new Date().getDate() + 1)),
-          status: "todo"
-        };
-        
-        setTranscript(mockTranscript);
-        setParsedData(mockParsed);
-        
-        // Auto-fill form
-        setTitle(mockParsed.title);
-        setPriority(mockParsed.priority);
-        setDate(mockParsed.dueDate);
-        
-        setIsProcessing(false);
-      }, 1500);
-    }, 2000);
+    // setIsListening(true);
+    // setIsProcessing(true);
+
   };
 
-  const handleSave = () => {
-    onOpenChange(false);
-    
+  useEffect(() => {
+    console.log(isOpen);
+  }, [isOpen]);
+
+  const handleSave = async () => {
+    const uuid = uuidv4();
+    if (!title || !description || !priority || !date) {
+      dangerToast('Please fill all fields');
+      return;
+    }
+    const res = await createTask({
+      id: uuid,
+      title,
+      description,
+      priority,
+      dueDate: date ?? '',
+      status: 'todo'
+    });
+    if (res.success) {
+      successToast('Task created successfully');
+      onOpenChange(false);
+      resetState();
+    } else {
+      dangerToast(res.message || 'Failed to create task');
+    }
   };
 
   return (
@@ -92,7 +95,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs defaultValue={activeTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="manual">Manual Entry</TabsTrigger>
             <TabsTrigger value="voice" className="relative">
@@ -104,18 +107,20 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
             </TabsTrigger>
           </TabsList>
 
+          {/* Manual Tab */}
           <TabsContent value="manual" className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">Task Title</Label>
-              <Input 
-                id="title" 
-                placeholder="e.g., Update landing page design" 
+              <Input
+                id="title"
+                placeholder="e.g., Update landing page design"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
+              {/* Priority */}
               <div className="space-y-2">
                 <Label>Priority</Label>
                 <Select value={priority} onValueChange={setPriority}>
@@ -130,13 +135,15 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
+              {/* Due Date*/}
               <div className="space-y-2">
                 <Label>Due Date</Label>
-                <Popover>
+                <Popover open={isOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant={"outline"}
+                      onClick={() => setIsOpen(!isOpen)}
                       className={cn(
                         "w-full justify-start text-left font-normal",
                         !date && "text-muted-foreground"
@@ -146,11 +153,14 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                       {date ? format(date, "PPP") : <span>Pick a date</span>}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
+                  <PopoverContent className="w-auto overflow-hidden p-0 z-10" align="start">
                     <Calendar
                       mode="single"
                       selected={date}
-                      onSelect={setDate}
+                      onSelect={(date) => {
+                        setDate(date)
+                        setIsOpen(false)
+                      }}
                     />
                   </PopoverContent>
                 </Popover>
@@ -159,9 +169,9 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea 
-                id="description" 
-                placeholder="Add more details..." 
+              <Textarea
+                id="description"
+                placeholder="Add more details..."
                 className="min-h-[100px]"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -169,6 +179,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
             </div>
           </TabsContent>
 
+          {/* Voice Tab */}
           <TabsContent value="voice" className="space-y-6 py-4">
             {!parsedData ? (
               <div className="flex flex-col items-center justify-center space-y-8">
@@ -205,8 +216,8 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                     {isListening ? "Listening..." : isProcessing ? "Processing..." : "Tap to Speak"}
                   </h3>
                   <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                    {isListening 
-                      ? "Describe your task naturally. Include title, priority, and due date." 
+                    {isListening
+                      ? "Describe your task naturally. Include title, priority, and due date."
                       : "Example: \"Create a high priority task to review the pull request by tomorrow 6 PM\""}
                   </p>
                 </div>
@@ -230,7 +241,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                       High Confidence
                     </span>
                   </div>
-                  
+
                   <div className="grid gap-4">
                     <div className="grid gap-1">
                       <Label className="text-xs text-muted-foreground">Title</Label>
@@ -264,7 +275,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0">
-                            <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
+                            <Calendar mode="single" selected={date} onSelect={setDate} />
                           </PopoverContent>
                         </Popover>
                       </div>
@@ -276,6 +287,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
           </TabsContent>
         </Tabs>
 
+        {/* Action buttons */}
         <div className="flex justify-end gap-3 pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave} className="bg-primary hover:bg-primary/90">

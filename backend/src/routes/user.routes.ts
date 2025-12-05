@@ -7,7 +7,7 @@ const router = Router();
 // Apply auth middleware to all routes in this router
 router.use(authMiddleware);
 
-router.get('/profile', getProfile);
-router.put('/profile', updateProfile);
+router.get('/getProfile', getProfile);
+router.put('/updateProfile', updateProfile);
 
 export default router;

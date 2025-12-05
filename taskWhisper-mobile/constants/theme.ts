@@ -1,41 +1,46 @@
 /**
  * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#7c3aed'; // violet-600
+const tintColorDark = '#a78bfa'; // violet-400
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: '#0f172a', // slate-900
+    background: '#f8fafc', // slate-50
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: '#64748b', // slate-500
+    tabIconDefault: '#94a3b8', // slate-400
     tabIconSelected: tintColorLight,
+    primary: '#7c3aed',
+    secondary: '#64748b',
+    card: '#ffffff',
+    border: '#e2e8f0',
+    error: '#ef4444',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#f8fafc', // slate-50
+    background: '#020617', // slate-950
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: '#94a3b8', // slate-400
+    tabIconDefault: '#64748b', // slate-500
     tabIconSelected: tintColorDark,
+    primary: '#7c3aed',
+    secondary: '#94a3b8',
+    card: '#1e293b', // slate-800
+    border: '#334155', // slate-700
+    error: '#ef4444',
   },
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

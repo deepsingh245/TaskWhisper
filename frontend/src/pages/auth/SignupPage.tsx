@@ -7,19 +7,35 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { Chrome, Facebook, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import axios from 'axios';
+import { signup } from '@/lib/auth';
 
 const SignupPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate signup delay
-    setTimeout(() => {
-      setLoading(false);
-      navigate('/dashboard');
-    }, 1500);
+    const handleSignup = async () => {
+  const res = await signup({
+    name,
+    email,
+    password,
+  });
+
+  if (!res.success) {
+    console.error("Signup failed:", res.message);
+    return;
+  }
+
+  console.log("User created:", res.data);
+};
+handleSignup();
   };
 
   return (
@@ -57,6 +73,8 @@ const SignupPage = () => {
                     type="text" 
                     className="pl-10 bg-white/50 dark:bg-black/20 border-white/20 focus:border-primary/50 transition-all"
                     required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                   />
                 </div>
               </div>
@@ -70,6 +88,8 @@ const SignupPage = () => {
                     type="email" 
                     className="pl-10 bg-white/50 dark:bg-black/20 border-white/20 focus:border-primary/50 transition-all"
                     required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
               </div>
@@ -83,6 +103,8 @@ const SignupPage = () => {
                     placeholder="••••••••" 
                     className="pl-10 bg-white/50 dark:bg-black/20 border-white/20 focus:border-primary/50 transition-all"
                     required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
               </div>

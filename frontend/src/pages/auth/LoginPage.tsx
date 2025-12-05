@@ -7,19 +7,25 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { Chrome, Facebook, Mail, Lock, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { login } from '@/lib/auth';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate login delay
-    setTimeout(() => {
-      setLoading(false);
-      navigate('/dashboard');
-    }, 1500);
+    login({ email, password }).then((res) => {
+      if (res.success) {
+        navigate('/dashboard');
+      }else{
+        alert(res.message);
+      }
+    });
+    setLoading(false);
   };
 
   return (
@@ -58,6 +64,8 @@ const LoginPage = () => {
                     type="email" 
                     className="pl-10 bg-white/50 dark:bg-black/20 border-white/20 focus:border-primary/50 transition-all"
                     required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
               </div>
@@ -71,6 +79,8 @@ const LoginPage = () => {
                     placeholder="••••••••" 
                     className="pl-10 bg-white/50 dark:bg-black/20 border-white/20 focus:border-primary/50 transition-all"
                     required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
               </div>

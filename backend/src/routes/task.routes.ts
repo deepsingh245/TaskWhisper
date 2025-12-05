@@ -7,9 +7,9 @@ const router = Router();
 // Apply auth middleware to all routes in this router
 router.use(authMiddleware);
 
-router.post('/', createTask);
-router.get('/', getTasks);
-router.put('/', updateTask);
-router.delete('/', deleteTask);
+router.post('/createTask', createTask);
+router.get('/getTasks', getTasks);
+router.put('/updateTask', updateTask);
+router.delete('/deleteTask', deleteTask);
 
 export default router;
