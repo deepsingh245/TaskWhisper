@@ -12,6 +12,7 @@ export const API_ROUTES = {
     GET_TASKS: `${import.meta.env.VITE_BACKEND_URL}/api/tasks/getTasks`,
     UPDATE_TASK: (taskId: string) => `${import.meta.env.VITE_BACKEND_URL}/api/tasks/updateTask/${taskId}`,
     DELETE_TASK: (taskId: string) => `${import.meta.env.VITE_BACKEND_URL}/api/tasks/deleteTask/${taskId}`,
+    VOICE_TASK: `${import.meta.env.VITE_BACKEND_URL}/api/voice/voice-task`,
   },
   REFRESH: `${import.meta.env.VITE_BACKEND_URL}/api/auth/refresh`,
   LOGOUT: `${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`,

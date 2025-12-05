@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Chrome, Facebook, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
-import { signup } from '@/lib/auth';
+import { signup } from '@/services/auth.service';
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -22,20 +22,20 @@ const SignupPage = () => {
     e.preventDefault();
     setLoading(true);
     const handleSignup = async () => {
-  const res = await signup({
-    name,
-    email,
-    password,
-  });
+      const res = await signup({
+        name,
+        email,
+        password,
+      });
 
-  if (!res.success) {
-    console.error("Signup failed:", res.message);
-    return;
-  }
+      if (!res.success) {
+        console.error("Signup failed:", res.message);
+        return;
+      }
 
-  console.log("User created:", res.data);
-};
-handleSignup();
+      console.log("User created:", res.data);
+    };
+    handleSignup();
   };
 
   return (
@@ -67,10 +67,10 @@ handleSignup();
                 <Label htmlFor="name">Full Name</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="name" 
-                    placeholder="John Doe" 
-                    type="text" 
+                  <Input
+                    id="name"
+                    placeholder="John Doe"
+                    type="text"
                     className="pl-10 bg-white/50 dark:bg-black/20 border-white/20 focus:border-primary/50 transition-all"
                     required
                     value={name}
@@ -82,10 +82,10 @@ handleSignup();
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="email" 
-                    placeholder="name@example.com" 
-                    type="email" 
+                  <Input
+                    id="email"
+                    placeholder="name@example.com"
+                    type="email"
                     className="pl-10 bg-white/50 dark:bg-black/20 border-white/20 focus:border-primary/50 transition-all"
                     required
                     value={email}
@@ -97,10 +97,10 @@ handleSignup();
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    placeholder="••••••••" 
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
                     className="pl-10 bg-white/50 dark:bg-black/20 border-white/20 focus:border-primary/50 transition-all"
                     required
                     value={password}
@@ -108,8 +108,8 @@ handleSignup();
                   />
                 </div>
               </div>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 shadow-lg shadow-primary/20 transition-all duration-300"
                 disabled={loading}
               >

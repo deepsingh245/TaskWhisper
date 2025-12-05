@@ -4,7 +4,7 @@ export type TaskStatus = "todo" | "in-progress" | "done";
 export interface Task {
   created_at: string;
   description: string;
-  due_date: string | null;
+  due_date: Date | null;
   id: string;
   priority: TaskPriority;
   status: TaskStatus;

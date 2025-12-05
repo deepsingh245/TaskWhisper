@@ -14,6 +14,7 @@ import { MoreHorizontal, ArrowUpDown, Calendar, Flag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Task } from '@/interfaces/task.interface';
 import { getTasks } from '@/lib/task';
+import GlobalLoader from '@/shared/global-loader';
 
 
 const TaskList = () => {
@@ -57,6 +58,7 @@ const TaskList = () => {
 
   return (
     <Card className="border-none shadow-none bg-transparent">
+      <GlobalLoader show={loading} />
       <CardHeader className="px-0 pt-0">
         <CardTitle>All Tasks</CardTitle>
       </CardHeader>

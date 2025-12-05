@@ -1,7 +1,7 @@
 import { API_ROUTES } from "@/constants/auth.constant";
-import { apiRequest } from "@/lib/api";
+import { apiRequest } from "@/utils/api";
 import { User } from "@/interfaces/auth.interface";
-import { setAccessToken, clearAccessToken } from "@/lib/token";
+import { setAccessToken, clearAccessToken } from "@/services/token.service";
 
 // Signup
 export const signup = (userData: User) =>

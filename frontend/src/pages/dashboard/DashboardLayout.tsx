@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import NewTaskModal from '@/components/tasks/NewTaskModal';
-import { logout } from '@/lib/auth';
+import { logout } from '@/services/auth.service';
 import { dangerToast } from '@/shared/toast';
 
 const DashboardLayout = () => {
@@ -33,69 +33,11 @@ const DashboardLayout = () => {
     }
   };
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">
-          TaskWhisper
-        </h1>
-      </div>
-      <div className="px-3 py-2 flex-1">
-        <div className="space-y-1">
-          <NavLink
-            to="/dashboard/board"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-md transition-all ${isActive
-                ? 'bg-primary/10 text-primary font-medium'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`
-            }
-          >
-            <LayoutDashboard className="h-5 w-5" />
-            Board View
-          </NavLink>
-          <NavLink
-            to="/dashboard/list"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-md transition-all ${isActive
-                ? 'bg-primary/10 text-primary font-medium'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`
-            }
-          >
-            <ListTodo className="h-5 w-5" />
-            List View
-          </NavLink>
-        </div>
-        <Separator className="my-4" />
-        <div className="space-y-1">
-          <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Settings
-          </div>
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-all">
-            <Settings className="h-5 w-5" />
-            Preferences
-          </button>
-        </div>
-      </div>
-      <div className="p-4">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
-          onClick={handleLogout}
-        >
-          <LogOut className="mr-2 h-5 w-5" />
-          Logout
-        </Button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden md:block w-64 border-r bg-card/50 backdrop-blur-xl">
-        <SidebarContent />
+        <SidebarContent handleLogout={handleLogout} />
       </aside>
 
       {/* Main Content */}
@@ -110,7 +52,7 @@ const DashboardLayout = () => {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="p-0 w-64">
-                <SidebarContent />
+                <SidebarContent handleLogout={handleLogout} />
               </SheetContent>
             </Sheet>
             <div className="relative hidden md:block w-96">
@@ -156,5 +98,63 @@ const DashboardLayout = () => {
     </div>
   );
 };
+
+const SidebarContent = ({ handleLogout }: { handleLogout: () => void }) => (
+  <div className="flex flex-col h-full">
+    <div className="p-6">
+      <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">
+        TaskWhisper
+      </h1>
+    </div>
+    <div className="px-3 py-2 flex-1">
+      <div className="space-y-1">
+        <NavLink
+          to="/dashboard/board"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-md transition-all ${isActive
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`
+          }
+        >
+          <LayoutDashboard className="h-5 w-5" />
+          Board View
+        </NavLink>
+        <NavLink
+          to="/dashboard/list"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-md transition-all ${isActive
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`
+          }
+        >
+          <ListTodo className="h-5 w-5" />
+          List View
+        </NavLink>
+      </div>
+      <Separator className="my-4" />
+      <div className="space-y-1">
+        <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Settings
+        </div>
+        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-all">
+          <Settings className="h-5 w-5" />
+          Preferences
+        </button>
+      </div>
+    </div>
+    <div className="p-4">
+      <Button
+        variant="ghost"
+        className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+        onClick={handleLogout}
+      >
+        <LogOut className="mr-2 h-5 w-5" />
+        Logout
+      </Button>
+    </div>
+  </div>
+);
 
 export default DashboardLayout;

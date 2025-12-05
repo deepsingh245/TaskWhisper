@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { Chrome, Facebook, Mail, Lock, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { login } from '@/lib/auth';
+import { login } from '@/services/auth.service';
 import { dangerToast } from '@/shared/toast';
 import GlobalLoader from '@/shared/global-loader';
 import { Spinner } from '@/components/ui/spinner';

@@ -15,6 +15,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createTask } from '@/lib/task';
 import { v4 as uuidv4 } from 'uuid';
 import { successToast, dangerToast } from '@/shared/toast';
+import { uploadVoiceTaskFn } from '@/lib/voicetask';
+import { TaskPriority, TaskStatus } from '@/interfaces/task.interface';
 
 interface NewTaskModalProps {
   open: boolean;
@@ -29,31 +31,75 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
   const [parsedData, setParsedData] = useState<any>(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Form State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState('medium');
-  const [date, setDate] = React.useState<Date | undefined>(undefined)
-  const mediaRecorderRef = useRef(null);
-  const [recording, setRecording] = useState(false);
-  const [permissionGranted, setPermissionGranted] = useState(false);
-  const [transcriptPreview, setTranscriptPreview] = useState('');
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [status, setStatus] = useState<TaskStatus>('todo');
 
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const dataArrayRef = useRef<Uint8Array>(new Uint8Array(0));
+
+  const chunksRef = useRef<Blob[]>([]);
   const resetState = () => {
     setIsListening(false);
     setIsProcessing(false);
     setTranscript('');
     setParsedData(null);
     setTitle('');
-    setDescription('');
     setPriority('medium');
-    setDate(new Date());
+    setDate(undefined);
   };
 
   useEffect(() => {
     if (!open) resetState();
   }, [open]);
 
+  const startSilenceDetection = (stream: MediaStream) => {
+    audioContextRef.current = new AudioContext();
+    const source = audioContextRef.current.createMediaStreamSource(stream);
+
+    analyserRef.current = audioContextRef.current.createAnalyser();
+    analyserRef.current.fftSize = 2048;
+
+    source.connect(analyserRef.current);
+
+    const bufferLength = analyserRef.current.frequencyBinCount;
+    dataArrayRef.current = new Uint8Array(bufferLength) as Uint8Array;
+
+    const SILENCE_THRESHOLD = 15; // lower = more sensitive
+    const MAX_SILENCE_TIME = 2500; // 2.5 sec silence triggers stop
+
+    const checkSilence = () => {
+      if (!analyserRef.current) return;
+
+      analyserRef.current.getByteFrequencyData(dataArrayRef.current! as Uint8Array<ArrayBuffer>);
+
+      // Calculate volume
+      const avg = dataArrayRef.current!.reduce((a, b) => a + b, 0) / dataArrayRef.current!.length;
+
+      const isSilent = avg < SILENCE_THRESHOLD;
+
+      if (!isSilent) {
+        // speaking → reset timer
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      } else {
+        // silent → start timer
+        if (!silenceTimerRef.current) {
+          silenceTimerRef.current = setTimeout(() => {
+            stopRecording(); // auto stop
+          }, MAX_SILENCE_TIME);
+        }
+      }
+
+      requestAnimationFrame(checkSilence);
+    };
+
+    checkSilence();
+  };
 
 
   const handleSave = async () => {
@@ -67,8 +113,12 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
       title,
       description,
       priority,
-      dueDate: date ?? '',
-      status: 'todo'
+      due_date: date,
+      tag: '',
+      status,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      user_id: uuid,
     });
     if (res.success) {
       successToast('Task created successfully');
@@ -79,71 +129,95 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
     }
   };
 
-  // const handleStartListening = () => {
-  //   try {
-  //     setIsListening(true);
-  //     setIsProcessing(true);
-  //     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  //     setPermissionGranted(true);
-  //     const mediaRecorder = new MediaRecorder(stream);
-  //     mediaRecorderRef.current = mediaRecorder;
+  const handleStartListening = async () => {
+    try {
+      if (isListening) {
+        stopRecording();
+        return;
+      }
 
-  //     const chunks = [];
-  //     mediaRecorder.addEventListener('dataavailable', (e) => {
-  //       if (e.data && e.data.size > 0) {
-  //         chunks.push(e.data);
-  //       }
-  //     });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-  //     mediaRecorder.addEventListener('stop', async () => {
-  //       const blob = new Blob(chunks, { type: 'audio/webm' });
-  //       await uploadAudio(blob);
-  //       // stop all tracks
-  //       stream.getTracks().forEach((t) => t.stop());
-  //     });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
 
-  //     mediaRecorder.start();
-  //     setRecording(true);
-  //     setTranscriptPreview('');
-  //   } catch (err) {
-  //     console.error('Microphone permission denied or error:', err);
-  //     alert('Microphone permission is required.');
-  //   }
-  // }
+      // START SILENCE DETECTION
+      startSilenceDetection(stream);
 
-  // function stopRecording() {
-  //   if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-  //     mediaRecorderRef.current.stop();
-  //   }
-  //   setRecording(false);
-  // }
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
 
-  // async function uploadAudio(blob) {
-  //   try {
-  //     setLoading(true);
-  //     const form = new FormData();
-  //     form.append('audio', blob, 'recording.webm');
+      recorder.onstop = async () => {
+        // stop silence detection
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        if (audioContextRef.current) audioContextRef.current.close();
 
-  //     const resp = await axios.post('http://localhost:4000/api/voice-task', form, {
-  //       headers: {
-  //         'Content-Type': 'multipart/form-data'
-  //       },
-  //       timeout: 120000
-  //     });
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        setIsProcessing(true);
 
-  //     if (resp.data) {
-  //       setTranscriptPreview(resp.data.transcript || '');
-  //       onResult(resp.data);
-  //     } else {
-  //       alert('No response from server.');
-  //     }
-  //   } catch (err) {
-  //     console.error('Upload/transcription error:', err);
-  //     alert('Failed to transcribe audio. See console for details.');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }
+        const data = await uploadVoiceTask(blob);
+
+        setTranscript(data.transcript);
+        setParsedData(data);
+        setTitle(data.title);
+        setPriority(data.priority.toLowerCase());
+        setDate(data.dueDate ? new Date(data.dueDate) : undefined);
+
+        setIsProcessing(false);
+        setIsListening(false);
+
+        stream.getTracks().forEach((t) => t.stop());
+      };
+
+      recorder.start();
+      setIsListening(true);
+      setIsProcessing(false);
+
+    } catch (err) {
+      console.error("Mic error:", err);
+      dangerToast("Microphone permission is required.");
+    }
+  };
+
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+
+  const uploadVoiceTask = async (audioBlob: Blob) => {
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "recording.webm");
+
+    try {
+      const response = await uploadVoiceTaskFn(audioBlob);
+
+      if (!response.success) throw new Error("No response received");
+
+      return {
+        transcript: response.data.transcript || "",
+        title: response.data.title || "",
+        priority: response.data.priority || "medium",
+        dueDate: response.data.dueDate ? new Date(response.data.dueDate) : undefined,
+        status: response.data.status || "to-do",
+      };
+    } catch (error: any) {
+      console.error("Voice task upload error:", error);
+      dangerToast("Voice processing failed.");
+      return {
+        transcript: "",
+        title: "",
+        priority: "medium",
+        dueDate: undefined,
+        status: "to-do",
+      };
+    }
+  };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -185,7 +259,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
               {/* Priority */}
               <div className="space-y-2">
                 <Label>Priority</Label>
-                <Select value={priority} onValueChange={setPriority}>
+                <Select value={priority} onValueChange={(value: TaskPriority) => setPriority(value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
@@ -201,13 +275,13 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
               {/* Due Date*/}
               <div className="space-y-2">
                 <Label>Due Date</Label>
-                <Popover open={isOpen}>
+
+                <Popover open={isOpen} onOpenChange={setIsOpen}>
                   <PopoverTrigger asChild>
                     <Button
-                      variant={"outline"}
-                      onClick={() => setIsOpen(!isOpen)}
+                      variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
+                        "w-full justify-start text-left font-normal cursor-pointer",
                         !date && "text-muted-foreground"
                       )}
                     >
@@ -215,18 +289,21 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                       {date ? format(date, "PPP") : <span>Pick a date</span>}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto overflow-hidden p-0 z-10" align="start">
+
+                  <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
                       selected={date}
-                      onSelect={(date) => {
-                        setDate(date)
-                        setIsOpen(false)
+                      onSelect={(d) => {
+                        setDate(d);
+                        setIsOpen(false);
                       }}
+                      initialFocus
                     />
                   </PopoverContent>
                 </Popover>
               </div>
+
             </div>
 
             <div className="space-y-2">
@@ -257,10 +334,10 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                   <Button
                     size="lg"
                     className={cn(
-                      "h-24 w-24 rounded-full shadow-2xl transition-all duration-300 relative z-10",
+                      "h-24 w-24 rounded-full shadow-2xl transition-all duration-300 relative z-10 cursor-pointer hover:scale-110",
                       isListening ? "bg-red-500 hover:bg-red-600" : "bg-gradient-to-r from-primary to-violet-600"
                     )}
-                    // onClick={handleStartListening}
+                    onClick={handleStartListening}
                     disabled={isProcessing}
                   >
                     {isProcessing ? (
@@ -309,10 +386,10 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                       <Label className="text-xs text-muted-foreground">Title</Label>
                       <Input value={title} onChange={(e) => setTitle(e.target.value)} />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-3">
                       <div className="grid gap-1">
                         <Label className="text-xs text-muted-foreground">Priority</Label>
-                        <Select value={priority} onValueChange={setPriority}>
+                        <Select value={priority} onValueChange={(value: TaskPriority) => setPriority(value)}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -321,6 +398,19 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                             <SelectItem value="medium">Medium</SelectItem>
                             <SelectItem value="high">High</SelectItem>
                             <SelectItem value="critical">Critical</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-1">
+                        <Label className="text-xs text-muted-foreground">Status</Label>
+                        <Select value={status} onValueChange={(value: TaskStatus) => setStatus(value)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todo">To Do</SelectItem>
+                            <SelectItem value="in-progress">In Progress</SelectItem>
+                            <SelectItem value="done">Done</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

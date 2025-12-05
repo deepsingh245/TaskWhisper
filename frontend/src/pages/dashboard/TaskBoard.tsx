@@ -8,31 +8,52 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getTasks } from '@/lib/task';
 import { Task } from '@/interfaces/task.interface';
+import GlobalLoader from '@/shared/global-loader';
 
-const initialTasks = {
-  todo: [
-    { id: 't1', title: 'Research competitors', priority: 'high', date: 'Tomorrow', tag: 'Strategy' },
-    { id: 't2', title: 'Draft user stories', priority: 'medium', date: 'Dec 12', tag: 'Product' },
-  ],
-  inProgress: [
-    { id: 't3', title: 'Design system updates', priority: 'critical', date: 'Today', tag: 'Design' },
-  ],
-  done: [
-    { id: 't4', title: 'Setup project repo', priority: 'low', date: 'Dec 01', tag: 'Dev' },
-  ]
-};
 
 const TaskBoard = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<{
+    todo: Task[];
+    inProgress: Task[];
+    done: Task[];
+  }>({
+    todo: [],
+    inProgress: [],
+    done: [],
+  });
   const [loading, setLoading] = useState(false);
+
+  // Helper to group tasks by status into columns
+  const groupTasksByStatus = (tasksArray: Task[]): { todo: Task[], inProgress: Task[], done: Task[] } => {
+    const grouped: { todo: Task[], inProgress: Task[], done: Task[] } = { todo: [], inProgress: [], done: [] };
+    tasksArray.forEach((task) => {
+      switch (task.status) {
+        case 'todo':
+          grouped.todo.push(task);
+          break;
+        case 'in-progress':
+          grouped.inProgress.push(task);
+          break;
+        case 'done':
+          grouped.done.push(task);
+          break;
+        default:
+          // fallback to todo if unknown
+          grouped.todo.push(task);
+      }
+    });
+    return grouped;
+  };
 
   useEffect(() => {
     const fetchTasks = async () => {
       setLoading(true);
       try {
         const response = await getTasks();
-        if (response.success) {
-          setTasks(response.data);
+        if (response.success && response.data) {
+          // Convert flat task list to column structure
+          const grouped = groupTasksByStatus(response.data);
+          setTasks(grouped);
         }
       } catch (error) {
         console.error('Error fetching tasks:', error);
@@ -162,11 +183,12 @@ const TaskBoard = () => {
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
+      <GlobalLoader show={loading} />
       <div className="h-full overflow-x-auto pb-4">
         <div className="flex gap-6 h-full min-w-max">
-          <Column title="To Do" id="todo" items={tasks.filter((task) => task.status === 'todo')} />
-          <Column title="In Progress" id="inProgress" items={tasks.filter((task) => task.status === 'in-progress')} />
-          <Column title="Done" id="done" items={tasks.filter((task) => task.status === 'done')} />
+          <Column title="To Do" id="todo" items={tasks.todo} />
+          <Column title="In Progress" id="inProgress" items={tasks.inProgress} />
+          <Column title="Done" id="done" items={tasks.done} />
         </div>
       </div>
     </DragDropContext>

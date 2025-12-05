@@ -1,5 +1,5 @@
 import { API_ROUTES } from "@/constants/auth.constant";
-import { apiRequest } from "./api";
+import { apiRequest } from "@/utils/api";
 import { Task } from "@/interfaces/task.interface";
 
 export const createTask = (taskData: Task) => apiRequest(API_ROUTES.TASK.CREATE_TASK, "POST", taskData);
