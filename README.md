@@ -20,6 +20,7 @@ Built with a modern tech stack—**React, Redux Toolkit, Node.js, and Supabase**
   - **Priority**: Detects keywords like "urgent", "high priority", "critical".
   - **Status**: Detects "in progress", "done".
   - **Tags**: Categorizes tasks (e.g., "Work", "Home", "Finance").
+  - **Multilingual Support**: Language selector UI, Deepgram multilingual transcription, and NLP parsing for English, Spanish, French, German, and Hindi.
 - **Review Mode**: See the transcript and parsed details before saving.
 
 ### ✅ Task Management
@@ -55,6 +56,13 @@ Built with a modern tech stack—**React, Redux Toolkit, Node.js, and Supabase**
 ### Dev Tools
 - **Linting**: ESLint + Prettier
 - **Version Control**: Git
+
+### Mobile
+- **Framework**: React Native + Expo
+- **Language**: TypeScript
+- **Styling**: NativeWind (Tailwind CLI)
+- **State Management**: Redux Toolkit
+- **Navigation**: Expo Router
 
 ---
 
@@ -163,6 +171,16 @@ npm run dev
 # App running at http://localhost:5173
 ```
 
+### 5. Mobile Setup
+```bash
+cd taskWhisper-mobile
+npm install
+# Start for Android
+npx expo start --android
+# Start for iOS (Mac only)
+npx expo start --ios
+```
+
 ---
 
 ## 🎙️ Voice Auto-Silence Detection
@@ -231,9 +249,10 @@ sequenceDiagram
 
 ## 🔮 Future Improvements
 -   [ ] **Real-time Collaboration**: Use Supabase Realtime to show task moves instantly to other users.
--   [ ] **Mobile App**: Port frontend to React Native (Expo) - *In Progress*.
+-   [x] **Mobile App**: Port frontend to React Native (Expo) - *Beta Released*.
 -   [ ] **Offline Mode**: Cache tasks locally using `redux-persist` for offline editing.
 -   [ ] **LLM Integration**: Replace regex parser with OpenAI/Gemini for smarter context understanding.
+-   [ ] **Multilingual Support**: Added language selector UI, Deepgram multilingual transcription, locale-aware NLP parsing (English, Spanish, French, German, Hindi) and database schema updates for language handling.
 
 ---
 

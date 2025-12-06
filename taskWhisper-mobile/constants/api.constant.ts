@@ -1,4 +1,4 @@
-export const API_BASE_URL = "http://10.0.2.2:5000"; // Android Emulator localhost
+export const API_BASE_URL = "https://984f4d7e7fe0.ngrok-free.app";
 
 export const API_ROUTES = {
   AUTH: {

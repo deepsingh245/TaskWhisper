@@ -10,13 +10,82 @@ interface ParsedTask {
     tag: string;
 }
 
-const VALID_TAGS = ['work', 'home', 'life', 'kitchen', 'school', 'office', 'personal', 'health', 'finance', 'waiting', 'errand'];
+const VALID_TAGS = ['work', 'home', 'life', 'kitchen', 'school', 'office', 'personal', 'health', 'finance', 'waiting', 'errand',
+    'trabajo', 'casa', 'vida', 'cocina', 'escuela', 'oficina', 'salud', 'finanzas', // ES
+    'travail', 'maison', 'vie', 'cuisine', 'école', 'bureau', 'santé', 'banque', // FR
+    'arbeit', 'zuhause', 'leben', 'küche', 'schule', 'büro', 'gesundheit', 'finanzen', // DE
+    'kaam', 'ghar', 'naji', 'rasoi', 'school', 'office', 'sehat', 'paisa' // HI (transliterated roughly or mixed)
+];
 
-export default function parseTask(transcript: string): ParsedTask {
+const KEYWORD_MAP: Record<string, {
+    priority: { high: RegExp, low: RegExp },
+    status: { inProgress: RegExp, done: RegExp }
+}> = {
+    en: {
+        priority: {
+            high: /\b(urgent|asap|critical|high priority|high-priority|important)\b/i,
+            low: /\b(low priority|low-priority|low|unimportant|not that important)\b/i
+        },
+        status: {
+            inProgress: /\b(in progress|doing|started|ongoing)\b/i,
+            done: /\b(done|completed|finish(ed)?)\b/i
+        }
+    },
+    es: {
+        priority: {
+            high: /\b(urgente|asap|crítico|alta prioridad|importante)\b/i,
+            low: /\b(baja prioridad|no importante|poco importante)\b/i
+        },
+        status: {
+            inProgress: /\b(en progreso|haciendo|empezado|en curso)\b/i,
+            done: /\b(hecho|completado|terminado|finalizado)\b/i
+        }
+    },
+    fr: {
+        priority: {
+            high: /\b(urgente?|asap|critique|haute priorité|importante?)\b/i,
+            low: /\b(basse priorité|pas importante?|peu importante?)\b/i
+        },
+        status: {
+            inProgress: /\b(en cours|en train de|commencé)\b/i,
+            done: /\b(fait|terminé|complet|fini)\b/i
+        }
+    },
+    de: {
+        priority: {
+            high: /\b(dringend|asap|kritisch|hohe priorität|wichtig(e|er|es)?)\b/i,
+            low: /\b(niedrige priorität|unwichtig(e|er|es)?|nicht wichtig(e|er|es)?)\b/i
+        },
+        status: {
+            inProgress: /\b(in bearbeitung|dabei|begonnen|laufend)\b/i,
+            done: /\b(erledigt|fertig|abgeschlossen|beendet)\b/i
+        }
+    },
+    hi: {
+        priority: {
+            high: /\b(jaruri|zaroori|urgent|important|mahatvapurn)\b/i,
+            low: /\b(kam jaruri|kam zaroori|unimportant)\b/i
+        },
+        status: {
+            inProgress: /\b(chal raha hai|shuru|doing)\b/i,
+            done: /\b(ho gaya|khatam|pura|complete)\b/i
+        }
+    }
+};
+
+export default function parseTask(transcript: string, language: string = 'en'): ParsedTask {
     const text = (transcript || '').trim();
+    const langCode = KEYWORD_MAP[language] ? language : 'en';
+    const keywords = KEYWORD_MAP[langCode];
 
-    // 1) Extract date using chrono-node
-    const parsedDates = chrono.parse(text);
+    // 1) Extract date using chrono-node based on language
+    let parsedDates;
+    if (langCode === 'es') parsedDates = chrono.es.parse(text);
+    else if (langCode === 'fr') parsedDates = chrono.fr.parse(text);
+    else if (langCode === 'de') parsedDates = chrono.de.parse(text);
+    // chrono doesn't support Hindi natively, fallback to strictly english or maybe loose parsing
+    else parsedDates = chrono.parse(text);
+
     let dueDate: string | null = null;
     if (parsedDates && parsedDates.length > 0) {
         try {
@@ -27,36 +96,35 @@ export default function parseTask(transcript: string): ParsedTask {
         }
     }
 
-    // 2) Priority detection (simple keyword rules)
+    // 2) Priority detection
     const textLower = text.toLowerCase();
     let priority: 'High' | 'Medium' | 'Low' = 'Medium';
-    if (/\b(urgent|asap|critical|high priority|high-priority|important)\b/.test(textLower)) {
+    if (keywords.priority.high.test(textLower)) {
         priority = 'High';
-    } else if (/\b(low priority|low-priority|low|unimportant|not that important)\b/.test(textLower)) {
+    } else if (keywords.priority.low.test(textLower)) {
         priority = 'Low';
     }
 
-    // 3) Status detection (if user mentions)
+    // 3) Status detection
     let status: 'To Do' | 'In Progress' | 'Done' = 'To Do';
-    if (/\b(in progress|doing|started|ongoing)\b/.test(textLower)) status = 'In Progress';
-    if (/\b(done|completed|finish(ed)?)\b/.test(textLower)) status = 'Done';
+    if (keywords.status.inProgress.test(textLower)) status = 'In Progress';
+    if (keywords.status.done.test(textLower)) status = 'Done';
 
     // 4) Tag detection
     let tag = 'general';
-    // Check for "for [tag]" or "in [tag]" or just the tag word if it's distinctive
     for (const t of VALID_TAGS) {
-        // We look for strict word boundaries to avoid partial matches
         if (new RegExp(`\\b${t}\\b`, 'i').test(textLower)) {
             tag = t;
-            break; // take the first found tag
+            // Map translated tags back to English canonical if needed, or keep as is.
+            // For now, let's keep them as detected or do a simple mapping if strictly required.
+            // To keep it simple, we return the detected word.
+            break;
         }
     }
 
-    // 5) Title extraction using compromise
-    let title = extractTitle(text);
-
-    // 6) Description: Use the text with command prefixes removed
-    let description = removeCommandPrefix(text);
+    // 5) Title extraction & Description
+    let title = extractTitle(text, langCode);
+    let description = removeCommandPrefix(text, langCode);
 
     return {
         title,
@@ -68,49 +136,40 @@ export default function parseTask(transcript: string): ParsedTask {
     };
 }
 
-function removeCommandPrefix(text: string): string {
-    return text
-        .replace(/^(create( a)?( new)? (task|todo|reminder) to )/i, '')
-        .replace(/^(create( a)? (task|todo|reminder) to )/i, '')
-        .replace(/^(remind me to )/i, '')
-        .replace(/^(remind me that )/i, '')
-        .replace(/^(please )/i, '')
-        .trim();
+function removeCommandPrefix(text: string, lang: string): string {
+    // Basic prefix removal - could be expanded per language
+    let cleaned = text;
+    if (lang === 'en') {
+        cleaned = text
+            .replace(/^(create( a)?( new)? (task|todo|reminder) to )/i, '')
+            .replace(/^(remind me to )/i, '')
+            .replace(/^(please )/i, '');
+    } else if (lang === 'es') {
+        cleaned = text
+            .replace(/^(crear( una)? (nueva )?(tarea|recordatorio) (para|de) )/i, '')
+            .replace(/^(recuérdame )/i, '')
+            .replace(/^(por favor )/i, '');
+    } else if (lang === 'fr') {
+        cleaned = text
+            .replace(/^(créer( une)? (nouvelle )?(tâche|rappel) (pour|de) )/i, '')
+            .replace(/^(rappelle-moi de )/i, '')
+            .replace(/^(s'il te plaît |stp )/i, '');
+    }
+    // ... add others as needed
+    return cleaned.trim();
 }
 
-/**
- * Extract a concise title:
- * - Remove leading verbs like "create", "remind me to", "set a task to"
- * - Try to remove date phrases (using chrono's text removal)
- * - If still long, return first clause/sentence.
- */
-function extractTitle(text: string): string {
+function extractTitle(text: string, lang: string): string {
     if (!text) return '';
 
-    // Remove common starter phrases
-    let cleaned = text
-        .replace(/^(create( a)?( new)? (task|todo|reminder) to )/i, '')
-        .replace(/^(create( a)? (task|todo|reminder) to )/i, '')
-        .replace(/^(remind me to )/i, '')
-        .replace(/^(remind me that )/i, '')
-        .replace(/^(please )/i, '')
-        .replace(/\b(on|by|before|due|at|tomorrow|today|next)\b.*$/i, '') // strip trailing date phrases simplistically
-        .trim();
+    let cleaned = removeCommandPrefix(text, lang);
+    
+    // Strip trailing date phrases (simplistic)
+    if (lang === 'en') {
+        cleaned = cleaned.replace(/\b(on|by|before|due|at|tomorrow|today|next)\b.*$/i, '');
+    } 
+    // Add other langs...
 
-    // Use compromise to get imperative or noun phrases
-    const doc = nlp(cleaned);
-    // prefer the verb phrase + object or the sentence trimmed
-    let candidate = doc.sentences().first().out('text') || cleaned;
-
-    // If candidate still contains priority words or status, remove them
-    candidate = candidate.replace(/\b(high priority|low priority|urgent|critical)\b/gi, '');
-    // Trim punctuation and whitespace
-    candidate = candidate.replace(/^[\.,\s]+|[\.,\s]+$/g, '').trim();
-
-    // Fallback: return the first 6-10 words if it's very long
-    if (candidate.split(/\s+/).length > 12) {
-        candidate = candidate.split(/\s+/).slice(0, 10).join(' ') + '...';
-    }
-
-    return candidate;
+    return cleaned.trim();
 }
+

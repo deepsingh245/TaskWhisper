@@ -13,11 +13,12 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createTask } from '@/store/thunks/taskThunks';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { TaskPriority, TaskStatus } from '@/store/types';
 import { v4 as uuidv4 } from 'uuid';
 import { successToast, dangerToast } from '@/shared/toast';
 import { uploadVoiceTaskFn } from '@/lib/voicetask';
+import LanguageSelector from '@/components/ui/LanguageSelector';
 
 interface NewTaskModalProps {
   open: boolean;
@@ -39,6 +40,8 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
   const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
   const [tag, setTag] = useState('');
+
+  const language = useAppSelector((state) => state.ui.language);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -204,7 +207,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
     formData.append("audio", audioBlob, "recording.webm");
 
     try {
-      const response = await uploadVoiceTaskFn(audioBlob);
+      const response = await uploadVoiceTaskFn(audioBlob, language);
 
       if (!response.success) throw new Error("No response received");
 
@@ -399,6 +402,9 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                       ? "Describe your task naturally. Include title, priority, and due date."
                       : "Example: \"Create a high priority task to review the pull request by tomorrow 6 PM\""}
                   </p>
+                  <div className="pt-2 flex justify-center">
+                    <LanguageSelector />
+                  </div>
                 </div>
               </div>
             ) : (
@@ -470,7 +476,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                               {date ? format(date, "PPP") : <span>Pick a date</span>}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
+                          <PopoverContent className="w-auto p-0 z-[1000] pointer-events-auto">
                             <Calendar mode="single" selected={date} onSelect={setDate} />
                           </PopoverContent>
                         </Popover>

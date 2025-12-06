@@ -4,11 +4,13 @@ import { Task } from "../types";
 interface UiState {
   isEditModalOpen: boolean;
   editingTask: Task | null;
+  language: string;
 }
 
 const initialState: UiState = {
   isEditModalOpen: false,
   editingTask: null,
+  language: 'en',
 };
 
 const uiSlice = createSlice({
@@ -23,8 +25,11 @@ const uiSlice = createSlice({
       state.isEditModalOpen = false;
       state.editingTask = null;
     },
+    setLanguage: (state, action: PayloadAction<string>) => {
+      state.language = action.payload;
+    },
   },
 });
 
-export const { openEditModal, closeEditModal } = uiSlice.actions;
+export const { openEditModal, closeEditModal, setLanguage } = uiSlice.actions;
 export default uiSlice.reducer;

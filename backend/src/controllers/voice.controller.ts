@@ -16,12 +16,13 @@ export const voiceTaskHandler = [
 
       const mimetype = req.file.mimetype || "audio/webm";
       const buffer = req.file.buffer;
+      const language = req.body.language || 'en';
 
       // 1. Transcribe audio using Deepgram
-      const transcript = await transcribeBuffer(buffer, mimetype);
+      const transcript = await transcribeBuffer(buffer, mimetype, language);
 
       // 2. Parse transcript → title, priority, date, status
-      const parsed = parseTask(transcript);
+      const parsed = parseTask(transcript, language);
 
       // 3. Ensure consistent return format
       return res.status(200).json({

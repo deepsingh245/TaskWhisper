@@ -14,14 +14,15 @@ const dgClient = new Deepgram(dgKey || '');
  * Transcribe audio buffer using Deepgram preRecorded endpoint.
  * Returns the transcript string (best alternative).
  */
-export async function transcribeBuffer(buffer: Buffer, mimetype: string = 'audio/webm'): Promise<string> {
+export async function transcribeBuffer(buffer: Buffer, mimetype: string = 'audio/webm', language: string = 'en'): Promise<string> {
     try {
         const resp = await dgClient.transcription.preRecorded(
             { buffer, mimetype },
             {
                 punctuate: true,
                 diarize: false,
-                model: 'general',
+                model: 'nova-2',
+                language: language,
             }
         );
 
