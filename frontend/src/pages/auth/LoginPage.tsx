@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { Chrome, Facebook, Mail, Lock, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { login } from '@/services/auth.service';
+import { loginUser } from '@/store/thunks/authThunks';
+import { useAppDispatch } from '@/store/hooks';
 import { dangerToast } from '@/shared/toast';
 import GlobalLoader from '@/shared/global-loader';
 import { Spinner } from '@/components/ui/spinner';
@@ -18,17 +19,19 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const dispatch = useAppDispatch();
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login({ email, password }).then((res) => {
-        if (res.success) {
-          navigate('/dashboard');
-        } else {
-          dangerToast(res.message || 'Failed to login');
-        }
-      });
+      const resultAction = await dispatch(loginUser({ email, password }));
+      console.log("🚀 ~ handleLogin ~ resultAction:", resultAction)
+      if (loginUser.fulfilled.match(resultAction)) {
+        navigate('/dashboard');
+      } else {
+        dangerToast((resultAction.payload as string) || 'Failed to login');
+      }
     } catch (error: unknown) {
       console.error("error:", error)
     } finally {

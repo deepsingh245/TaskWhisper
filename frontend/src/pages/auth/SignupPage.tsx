@@ -7,36 +7,43 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { Chrome, Facebook, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
-import axios from 'axios';
-import { signup } from '@/services/auth.service';
+import { registerUser } from '@/store/thunks/authThunks';
+import { useAppDispatch } from '@/store/hooks';
+import { dangerToast } from '@/shared/toast';
+
 
 const SignupPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-
+  const dispatch = useAppDispatch();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const handleSignup = async () => {
-      const res = await signup({
-        name,
-        email,
-        password,
-      });
 
-      if (!res.success) {
-        console.error("Signup failed:", res.message);
-        return;
+    try {
+      const resultAction = await dispatch(
+        registerUser({ name, email, password })
+      );
+
+      if (registerUser.fulfilled.match(resultAction)) {
+        console.log("User created:", resultAction.payload);
+        navigate("/dashboard");
+      } else {
+        console.error("Signup failed:", resultAction.payload);
+        dangerToast(resultAction.payload as string);
       }
-
-      console.log("User created:", res.data);
-    };
-    handleSignup();
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      dangerToast(error.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background relative overflow-hidden">

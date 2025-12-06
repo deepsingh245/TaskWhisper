@@ -6,12 +6,18 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Calendar, MoreHorizontal, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getTasks } from '@/lib/task';
-import { Task } from '@/interfaces/task.interface';
+
+import { Task, TaskPriority, TaskStatus } from '@/store/types';
 import GlobalLoader from '@/shared/global-loader';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchTasks } from '@/store/thunks/taskThunks';
+import { openEditModal } from '@/store/slices/uiSlice';
 
 
 const TaskBoard = () => {
+  const dispatch = useAppDispatch();
+  const { list: taskList, isLoading: loading } = useAppSelector((state) => state.tasks);
+
   const [tasks, setTasks] = useState<{
     todo: Task[];
     inProgress: Task[];
@@ -21,20 +27,19 @@ const TaskBoard = () => {
     inProgress: [],
     done: [],
   });
-  const [loading, setLoading] = useState(false);
 
   // Helper to group tasks by status into columns
   const groupTasksByStatus = (tasksArray: Task[]): { todo: Task[], inProgress: Task[], done: Task[] } => {
     const grouped: { todo: Task[], inProgress: Task[], done: Task[] } = { todo: [], inProgress: [], done: [] };
     tasksArray.forEach((task) => {
       switch (task.status) {
-        case 'todo':
+        case TaskStatus.TODO:
           grouped.todo.push(task);
           break;
-        case 'in-progress':
+        case TaskStatus.IN_PROGRESS:
           grouped.inProgress.push(task);
           break;
-        case 'done':
+        case TaskStatus.DONE:
           grouped.done.push(task);
           break;
         default:
@@ -46,23 +51,15 @@ const TaskBoard = () => {
   };
 
   useEffect(() => {
-    const fetchTasks = async () => {
-      setLoading(true);
-      try {
-        const response = await getTasks();
-        if (response.success && response.data) {
-          // Convert flat task list to column structure
-          const grouped = groupTasksByStatus(response.data);
-          setTasks(grouped);
-        }
-      } catch (error) {
-        console.error('Error fetching tasks:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTasks();
-  }, []);
+    dispatch(fetchTasks());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (taskList) {
+      const grouped = groupTasksByStatus(taskList);
+      setTasks(grouped);
+    }
+  }, [taskList]);
 
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
@@ -99,9 +96,9 @@ const TaskBoard = () => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'critical': return 'bg-red-500/10 text-red-500 hover:bg-red-500/20';
-      case 'high': return 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20';
-      case 'medium': return 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20';
+      case TaskPriority.CRITICAL: return 'bg-red-500/10 text-red-500 hover:bg-red-500/20';
+      case TaskPriority.HIGH: return 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20';
+      case TaskPriority.MEDIUM: return 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20';
       default: return 'bg-slate-500/10 text-slate-500 hover:bg-slate-500/20';
     }
   };
@@ -145,7 +142,7 @@ const TaskBoard = () => {
                             <MoreHorizontal className="h-3 w-3" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => dispatch(openEditModal(task))}>Edit</DropdownMenuItem>
                             <DropdownMenuItem className="text-red-500">Delete</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -161,7 +158,7 @@ const TaskBoard = () => {
                           </Avatar>
                           <div className="flex items-center text-xs text-muted-foreground">
                             <Calendar className="h-3 w-3 mr-1" />
-                            {task.due_date}
+                            {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No date'}
                           </div>
                         </div>
                         <Badge className={`text-[10px] px-1.5 py-0 border-none ${getPriorityColor(task.priority)}`}>
@@ -186,9 +183,9 @@ const TaskBoard = () => {
       <GlobalLoader show={loading} />
       <div className="h-full overflow-x-auto pb-4">
         <div className="flex gap-6 h-full min-w-max">
-          <Column title="To Do" id="todo" items={tasks.todo} />
-          <Column title="In Progress" id="inProgress" items={tasks.inProgress} />
-          <Column title="Done" id="done" items={tasks.done} />
+          <Column title="To Do" id={TaskStatus.TODO} items={tasks.todo} />
+          <Column title="In Progress" id={TaskStatus.IN_PROGRESS} items={tasks.inProgress} />
+          <Column title="Done" id={TaskStatus.DONE} items={tasks.done} />
         </div>
       </div>
     </DragDropContext>

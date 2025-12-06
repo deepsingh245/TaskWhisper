@@ -30,6 +30,7 @@ export const voiceTaskHandler = [
         priority: parsed.priority || "Medium",
         dueDate: parsed.dueDate || null,
         status: parsed.status || "To Do",
+        description: parsed.description || "",
       });
     } catch (err: any) {
       console.error("voice-task error:", err);

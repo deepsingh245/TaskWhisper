@@ -16,16 +16,44 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import NewTaskModal from '@/components/tasks/NewTaskModal';
-import { logout } from '@/services/auth.service';
+import { logoutUser } from '@/store/thunks/authThunks';
+import { useAppDispatch } from '@/store/hooks';
 import { dangerToast } from '@/shared/toast';
+import EditTaskModal from '@/components/tasks/EditTaskModal';
+import { useAppSelector } from '@/store/hooks';
+import { openEditModal } from '@/store/slices/uiSlice';
+import { Task } from '@/store/types';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
+  const dispatch = useAppDispatch();
+  const { list: tasks } = useAppSelector((state) => state.tasks);
+
+  const filteredTasks = tasks.filter(task =>
+    task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    task.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSearchFocus = () => setShowSearchResults(true);
+  const handleSearchBlur = () => {
+    // Delay hiding to allow click event on result
+    setTimeout(() => setShowSearchResults(false), 200);
+  };
+
+  const handleTaskClick = (task: Task) => {
+    dispatch(openEditModal(task));
+    setSearchQuery('');
+    setShowSearchResults(false);
+  };
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await dispatch(logoutUser());
       navigate('/login');
     } catch (error) {
       console.error('Logout failed:', error);
@@ -55,12 +83,57 @@ const DashboardLayout = () => {
                 <SidebarContent handleLogout={handleLogout} />
               </SheetContent>
             </Sheet>
-            <div className="relative hidden md:block w-96">
+            <div className="relative hidden md:block w-96 z-50">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search tasks..."
                 className="pl-9 bg-muted/50 border-none focus-visible:ring-1"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={handleSearchFocus}
+                onBlur={handleSearchBlur}
               />
+
+              {/* Search Results Dropdown */}
+              <AnimatePresence>
+                {showSearchResults && searchQuery && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute top-full left-0 w-full mt-2 bg-card/95 backdrop-blur-xl border border-border/50 rounded-lg shadow-xl overflow-hidden max-h-[300px] overflow-y-auto"
+                  >
+                    {filteredTasks.length > 0 ? (
+                      <div className="py-2">
+                        {filteredTasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="px-4 py-3 hover:bg-muted/50 cursor-pointer transition-colors border-b border-border/50 last:border-0"
+                            onClick={() => handleTaskClick(task)}
+                          >
+                            <h4 className="text-sm font-medium text-foreground">{task.title}</h4>
+                            <div className="flex items-center justify-between mt-1">
+                              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                {task.description}
+                              </span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${task.priority === 'high' || task.priority === 'critical'
+                                  ? 'bg-red-500/10 text-red-500'
+                                  : 'bg-blue-500/10 text-blue-500'
+                                }`}>
+                                {task.priority}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-sm text-muted-foreground">
+                        No tasks found matching "{searchQuery}"
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -95,6 +168,7 @@ const DashboardLayout = () => {
       </div>
 
       <NewTaskModal open={isNewTaskOpen} onOpenChange={setIsNewTaskOpen} />
+      <EditTaskModal />
     </div>
   );
 };

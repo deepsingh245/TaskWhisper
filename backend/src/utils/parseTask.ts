@@ -6,6 +6,7 @@ interface ParsedTask {
     dueDate: string | null;
     priority: 'High' | 'Medium' | 'Low';
     status: 'To Do' | 'In Progress' | 'Done';
+    description: string;
 }
 
 /**
@@ -35,9 +36,9 @@ export default function parseTask(transcript: string): ParsedTask {
     // 2) Priority detection (simple keyword rules)
     const textLower = text.toLowerCase();
     let priority: 'High' | 'Medium' | 'Low' = 'Medium';
-    if (/\b(urgent|asap|critical|high priority|high-priority|high priority)\b/.test(textLower)) {
+    if (/\b(urgent|asap|critical|high priority|high-priority|important)\b/.test(textLower)) {
         priority = 'High';
-    } else if (/\b(low priority|low-priority|low)\b/.test(textLower)) {
+    } else if (/\b(low priority|low-priority|low|unimportant|not that important)\b/.test(textLower)) {
         priority = 'Low';
     }
 
@@ -50,12 +51,26 @@ export default function parseTask(transcript: string): ParsedTask {
     // Remove common filler verbs and date expressions for cleaner title.
     let title = extractTitle(text);
 
+    // 5) Description: Use the text with command prefixes removed, but keep details like date/priority
+    let description = removeCommandPrefix(text);
+
     return {
         title,
         dueDate,
         priority,
-        status
+        status,
+        description
     };
+}
+
+function removeCommandPrefix(text: string): string {
+    return text
+        .replace(/^(create( a)?( new)? (task|todo|reminder) to )/i, '')
+        .replace(/^(create( a)? (task|todo|reminder) to )/i, '')
+        .replace(/^(remind me to )/i, '')
+        .replace(/^(remind me that )/i, '')
+        .replace(/^(please )/i, '')
+        .trim();
 }
 
 /**

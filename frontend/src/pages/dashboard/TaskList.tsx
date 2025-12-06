@@ -12,46 +12,36 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MoreHorizontal, ArrowUpDown, Calendar, Flag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Task } from '@/interfaces/task.interface';
-import { getTasks } from '@/lib/task';
+import { Task, TaskPriority, TaskStatus } from '@/store/types';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchTasks } from '@/store/thunks/taskThunks';
+import { openEditModal } from '@/store/slices/uiSlice';
 import GlobalLoader from '@/shared/global-loader';
 
 
 const TaskList = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const { list: tasks, isLoading: loading } = useAppSelector((state) => {
+    return state.tasks;
+  });
 
   useEffect(() => {
-    const fetchTasks = async () => {
-      setLoading(true);
-      try {
-        const response = await getTasks();
-        if (response.success) {
-          setTasks(response.data as Task[]);
-        } else {
-          console.error('Failed to fetch tasks', response.message);
-        }
-      } catch (error) {
-        console.error('Error fetching tasks:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTasks();
-  }, []);
+    dispatch(fetchTasks());
+  }, [dispatch]);
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'critical': return 'bg-red-500/10 text-red-500 hover:bg-red-500/20';
-      case 'high': return 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20';
-      case 'medium': return 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20';
+      case TaskPriority.CRITICAL: return 'bg-red-500/10 text-red-500 hover:bg-red-500/20';
+      case TaskPriority.HIGH: return 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20';
+      case TaskPriority.MEDIUM: return 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20';
       default: return 'bg-slate-500/10 text-slate-500 hover:bg-slate-500/20';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Done': return 'bg-green-500/10 text-green-500';
-      case 'In Progress': return 'bg-blue-500/10 text-blue-500';
+      case TaskStatus.DONE: return 'bg-green-500/10 text-green-500';
+      case TaskStatus.IN_PROGRESS: return 'bg-blue-500/10 text-blue-500';
       default: return 'bg-slate-500/10 text-slate-500';
     }
   };
@@ -102,7 +92,7 @@ const TaskList = () => {
                   <TableCell>
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Calendar className="mr-2 h-4 w-4" />
-                      {task.due_date}
+                      {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No date'}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -112,7 +102,7 @@ const TaskList = () => {
                     </Avatar>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" onClick={() => dispatch(openEditModal(task))}>
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </TableCell>

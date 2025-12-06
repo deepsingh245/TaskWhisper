@@ -12,11 +12,12 @@ import { Mic, Calendar as CalendarIcon, Check, Loader2, Play, Pause, RefreshCw, 
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createTask } from '@/lib/task';
+import { createTask } from '@/store/thunks/taskThunks';
+import { useAppDispatch } from '@/store/hooks';
+import { TaskPriority, TaskStatus } from '@/store/types';
 import { v4 as uuidv4 } from 'uuid';
 import { successToast, dangerToast } from '@/shared/toast';
 import { uploadVoiceTaskFn } from '@/lib/voicetask';
-import { TaskPriority, TaskStatus } from '@/interfaces/task.interface';
 
 interface NewTaskModalProps {
   open: boolean;
@@ -24,6 +25,7 @@ interface NewTaskModalProps {
 }
 
 const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
+  const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState<'manual' | 'voice'>('manual');
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -34,8 +36,8 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState<Date | undefined>(undefined);
-  const [priority, setPriority] = useState<TaskPriority>('medium');
-  const [status, setStatus] = useState<TaskStatus>('todo');
+  const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
+  const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -50,8 +52,10 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
     setTranscript('');
     setParsedData(null);
     setTitle('');
-    setPriority('medium');
+    setPriority(TaskPriority.MEDIUM);
     setDate(undefined);
+    setStatus(TaskStatus.TODO);
+    setDescription('');
   };
 
   useEffect(() => {
@@ -104,11 +108,11 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
 
   const handleSave = async () => {
     const uuid = uuidv4();
-    if (!title || !description || !priority || !date) {
+    if (!title || !description || !priority || !date || !status) {
       dangerToast('Please fill all fields');
       return;
     }
-    const res = await createTask({
+    const resultAction = await dispatch(createTask({
       id: uuid,
       title,
       description,
@@ -119,13 +123,14 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       user_id: uuid,
-    });
-    if (res.success) {
+    }));
+
+    if (createTask.fulfilled.match(resultAction)) {
       successToast('Task created successfully');
       onOpenChange(false);
       resetState();
     } else {
-      dangerToast(res.message || 'Failed to create task');
+      dangerToast((resultAction.payload as string) || 'Failed to create task');
     }
   };
 
@@ -162,6 +167,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
         setTranscript(data.transcript);
         setParsedData(data);
         setTitle(data.title);
+        setDescription(data.description);
         setPriority(data.priority.toLowerCase());
         setDate(data.dueDate ? new Date(data.dueDate) : undefined);
 
@@ -204,6 +210,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
         priority: response.data.priority || "medium",
         dueDate: response.data.dueDate ? new Date(response.data.dueDate) : undefined,
         status: response.data.status || "to-do",
+        description: response.data.description || "",
       };
     } catch (error: any) {
       console.error("Voice task upload error:", error);
@@ -214,6 +221,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
         priority: "medium",
         dueDate: undefined,
         status: "to-do",
+        description: "",
       };
     }
   };
@@ -264,10 +272,25 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low Priority</SelectItem>
-                    <SelectItem value="medium">Medium Priority</SelectItem>
-                    <SelectItem value="high">High Priority</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value={TaskPriority.LOW}>Low Priority</SelectItem>
+                    <SelectItem value={TaskPriority.MEDIUM}>Medium Priority</SelectItem>
+                    <SelectItem value={TaskPriority.HIGH}>High Priority</SelectItem>
+                    <SelectItem value={TaskPriority.CRITICAL}>Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status */}
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={status} onValueChange={(value: TaskStatus) => setStatus(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={TaskStatus.TODO}>To Do</SelectItem>
+                    <SelectItem value={TaskStatus.IN_PROGRESS}>In Progress</SelectItem>
+                    <SelectItem value={TaskStatus.DONE}>Done</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -386,7 +409,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                       <Label className="text-xs text-muted-foreground">Title</Label>
                       <Input value={title} onChange={(e) => setTitle(e.target.value)} />
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-6">
                       <div className="grid gap-1">
                         <Label className="text-xs text-muted-foreground">Priority</Label>
                         <Select value={priority} onValueChange={(value: TaskPriority) => setPriority(value)}>
@@ -394,10 +417,10 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                            <SelectItem value="critical">Critical</SelectItem>
+                            <SelectItem value={TaskPriority.LOW}>Low</SelectItem>
+                            <SelectItem value={TaskPriority.MEDIUM}>Medium</SelectItem>
+                            <SelectItem value={TaskPriority.HIGH}>High</SelectItem>
+                            <SelectItem value={TaskPriority.CRITICAL}>Critical</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -408,9 +431,9 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="todo">To Do</SelectItem>
-                            <SelectItem value="in-progress">In Progress</SelectItem>
-                            <SelectItem value="done">Done</SelectItem>
+                            <SelectItem value={TaskStatus.TODO}>To Do</SelectItem>
+                            <SelectItem value={TaskStatus.IN_PROGRESS}>In Progress</SelectItem>
+                            <SelectItem value={TaskStatus.DONE}>Done</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -431,6 +454,16 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                           </PopoverContent>
                         </Popover>
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        placeholder="Add more details..."
+                        className="min-h-[100px]"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                      />
                     </div>
                   </div>
                 </div>
