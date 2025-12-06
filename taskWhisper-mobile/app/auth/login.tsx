@@ -6,22 +6,34 @@ import { BlurView } from 'expo-blur';
 import { Mail, Lock, ArrowRight, Chrome, Facebook } from 'lucide-react-native';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppDispatch, useAppSelector } from '@/app/store/hooks';
+import { loginUser } from '@/app/store/thunks/authThunks';
 
 export default function LoginScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const [loading, setLoading] = useState(false);
+
+  const dispatch = useAppDispatch();
+  const { isLoading, error } = useAppSelector((state) => state.auth);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    setLoading(true);
-    // Simulate login delay
-    setTimeout(() => {
-      setLoading(false);
-      router.replace('/(tabs)');
-    }, 1500);
+  const handleLogin = async () => {
+    if (!email || !password) return;
+
+    try {
+      const resultAction = await dispatch(loginUser({ email, password }));
+      if (loginUser.fulfilled.match(resultAction)) {
+        router.replace('/(tabs)');
+      } else {
+        // Error is handled in redux state, but we could show a toast here
+        console.log("Login failed", resultAction.payload);
+      }
+    } catch (err) {
+      console.error("Login Error", err);
+    }
   };
 
   return (
@@ -32,7 +44,7 @@ export default function LoginScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.background}
       />
-      
+
       {/* Background Orbs */}
       <View style={[styles.orb, { top: '10%', left: '-10%', backgroundColor: colors.primary, opacity: 0.2 }]} />
       <View style={[styles.orb, { bottom: '10%', right: '-10%', backgroundColor: colors.secondary, opacity: 0.2 }]} />
@@ -45,6 +57,12 @@ export default function LoginScreen() {
               Enter your credentials to access your account
             </Text>
           </View>
+
+          {error && (
+            <View style={{ marginBottom: 10, padding: 10, backgroundColor: 'rgba(255, 0, 0, 0.1)', borderRadius: 8 }}>
+              <Text style={{ color: 'red', textAlign: 'center' }}>{error}</Text>
+            </View>
+          )}
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
@@ -81,9 +99,9 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={[styles.button, { backgroundColor: colors.tint }]}
               onPress={handleLogin}
-              disabled={loading}
+              disabled={isLoading}
             >
-              {loading ? (
+              {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <View style={styles.buttonContent}>

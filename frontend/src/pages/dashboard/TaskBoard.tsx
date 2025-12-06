@@ -237,7 +237,7 @@ const TaskBoard = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setAlert(false)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={deleteTaskHandler}>Continue</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

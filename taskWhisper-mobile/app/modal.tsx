@@ -1,180 +1,361 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Platform, TextInput, Alert } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Mic, X, Check, Calendar, Tag, AlertCircle } from 'lucide-react-native';
+import { Mic, X, Check, Calendar as CalendarIcon, Tag, Clock, Pause, RotateCcw, ChevronDown } from 'lucide-react-native';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated';
+import { Audio } from 'expo-av';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useAppDispatch, useAppSelector } from './store/hooks';
+import { createTask, updateTask } from './store/thunks/taskThunks';
+import { TaskPriority, TaskStatus } from './store/types';
+import { uploadVoiceTaskFn } from '@/lib/voicetask';
 
-const MOCK_TRANSCRIPT = "Create a task to review the authentication module by tomorrow high priority";
-const MOCK_PARSED = {
-  title: "Review authentication module",
-  dueDate: "Tomorrow",
-  priority: "High",
-  tags: ["Backend", "Auth"],
-  status: "To Do"
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 };
 
-export default function VoiceModal() {
+export default function TaskModal() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const taskId = params.taskId as string;
+  const isEditMode = !!taskId;
+
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  
-  const [state, setState] = useState<'idle' | 'recording' | 'processing' | 'review'>('idle');
+  const dispatch = useAppDispatch();
+  const { list: tasks } = useAppSelector(state => state.tasks);
+
+  const [activeTab, setActiveTab] = useState<'manual' | 'voice'>('manual');
+
+  // Form State
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
+  const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Voice State
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
-  
-  // Animation values
   const pulse = useSharedValue(1);
 
+  // Load task for edit
   useEffect(() => {
-    if (state === 'recording') {
+    if (isEditMode) {
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        setTitle(task.title);
+        setDescription(task.description);
+        setPriority(task.priority);
+        setStatus(task.status);
+        setDate(task.due_date ? new Date(task.due_date) : undefined);
+      }
+    }
+  }, [taskId, tasks]);
+
+  // Cleanup audio
+  useEffect(() => {
+    return () => {
+      if (recording) {
+        recording.stopAndUnloadAsync();
+      }
+    };
+  }, [recording]);
+
+  // Animation effect
+  useEffect(() => {
+    if (isRecording) {
       pulse.value = withRepeat(
-        withSequence(
-          withTiming(1.2, { duration: 500 }),
-          withTiming(1, { duration: 500 })
-        ),
+        withSequence(withTiming(1.2, { duration: 500 }), withTiming(1, { duration: 500 })),
         -1,
         true
       );
     } else {
       pulse.value = withTiming(1);
     }
-  }, [state]);
+  }, [isRecording]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  const animatedMicStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulse.value }],
   }));
 
-  const handleMicPress = () => {
-    if (state === 'idle') {
-      setState('recording');
-      // Simulate recording duration
-      setTimeout(() => {
-        setState('processing');
-        // Simulate processing
-        setTimeout(() => {
-          setTranscript(MOCK_TRANSCRIPT);
-          setState('review');
-        }, 1500);
-      }, 2000);
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission needed', 'Microphone permission is required to record voice tasks.');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(recording);
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Failed to start recording', err);
+      Alert.alert('Error', 'Failed to start recording');
     }
   };
 
-  const handleSave = () => {
-    // Logic to save task would go here
-    router.back();
+  const stopRecording = async () => {
+    if (!recording) return;
+
+    setIsRecording(false);
+    await recording.stopAndUnloadAsync();
+    const uri = recording.getURI();
+    setRecording(null);
+
+    if (uri) {
+      processVoice(uri);
+    }
   };
+
+  const processVoice = async (uri: string) => {
+    setIsProcessing(true);
+    const result = await uploadVoiceTaskFn(uri);
+    setIsProcessing(false);
+
+    if (result.success && result.data) {
+      const data = result.data;
+      setTranscript(data.transcript || '');
+
+      // Populate form
+      setTitle(data.title || title);
+      setDescription(data.description || description);
+      if (data.priority) setPriority(data.priority.toLowerCase() as TaskPriority);
+      if (data.status) setStatus(data.status.toLowerCase() as TaskStatus);
+      if (data.dueDate) setDate(new Date(data.dueDate));
+
+      // Switch to manual tab to review
+      setActiveTab('manual');
+      Alert.alert("Success", "Voice processed successfully. Please review the details.");
+    } else {
+      Alert.alert("Error", "Failed to process voice command.");
+    }
+  };
+
+  const handleSave = async () => {
+    if (!title) {
+      Alert.alert("Error", "Title is required");
+      return;
+    }
+
+    const taskData = {
+      title,
+      description,
+      priority,
+      status,
+      due_date: date || null,
+      updated_at: new Date().toISOString(),
+      // Adding required fields for creation
+      ...(isEditMode ? {} : {
+        id: generateUUID(),
+        created_at: new Date().toISOString(),
+        user_id: 'current-user', // Backend handles this usually, but strict typing might need it
+        tag: 'General'
+      })
+    };
+
+    try {
+      if (isEditMode) {
+        await dispatch(updateTask({ id: taskId, data: taskData })).unwrap();
+        Alert.alert("Success", "Task updated!");
+      } else {
+        await dispatch(createTask(taskData)).unwrap();
+        Alert.alert("Success", "Task created!");
+      }
+      router.back();
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to save task");
+    }
+  };
+
+  const FormLabel = ({ children }: { children: React.ReactNode }) => (
+    <Text style={[styles.label, { color: colors.text }]}>{children}</Text>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />
-      
+
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>New Voice Task</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{isEditMode ? 'Edit Task' : 'New Task'}</Text>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
           <X size={24} color={colors.icon} />
         </TouchableOpacity>
       </View>
 
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'manual' && { backgroundColor: colors.tint + '10', borderColor: colors.tint }]}
+          onPress={() => setActiveTab('manual')}
+        >
+          <Text style={[styles.tabText, { color: activeTab === 'manual' ? colors.tint : colors.icon }]}>Manual</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'voice' && { backgroundColor: colors.tint + '10', borderColor: colors.tint }]}
+          onPress={() => setActiveTab('voice')}
+        >
+          <Text style={[styles.tabText, { color: activeTab === 'voice' ? colors.tint : colors.icon }]}>Voice AI</Text>
+          {activeTab !== 'voice' && <View style={[styles.badgeDot, { backgroundColor: colors.tint }]} />}
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.content}>
-        {state !== 'review' ? (
-          <View style={styles.recordingContainer}>
+        {activeTab === 'manual' ? (
+          <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
+            <View style={styles.inputGroup}>
+              <FormLabel>Title</FormLabel>
+              <TextInput
+                style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}
+                placeholder="Task title"
+                placeholderTextColor={colors.icon}
+                value={title}
+                onChangeText={setTitle}
+              />
+            </View>
+
+            <View style={styles.row}>
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <FormLabel>Priority</FormLabel>
+                <View style={[styles.selectContainer, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                  {/* Simplistic Select using Touchable for now - ideally a modal or picker */}
+                  <TouchableOpacity onPress={() => {
+                    const priorities = Object.values(TaskPriority);
+                    const currentIndex = priorities.indexOf(priority);
+                    const nextIndex = (currentIndex + 1) % priorities.length;
+                    setPriority(priorities[nextIndex]);
+                  }} style={styles.selectButton}>
+                    <Text style={{ color: colors.text, textTransform: 'capitalize' }}>{priority}</Text>
+                    <ChevronDown size={16} color={colors.icon} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <FormLabel>Status</FormLabel>
+                <View style={[styles.selectContainer, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                  <TouchableOpacity onPress={() => {
+                    const statuses = Object.values(TaskStatus);
+                    const currentIndex = statuses.indexOf(status);
+                    const nextIndex = (currentIndex + 1) % statuses.length;
+                    setStatus(statuses[nextIndex]);
+                  }} style={styles.selectButton}>
+                    <Text style={{ color: colors.text, textTransform: 'capitalize' }}>{status.replace('-', ' ')}</Text>
+                    <ChevronDown size={16} color={colors.icon} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <FormLabel>Due Date</FormLabel>
+              <TouchableOpacity
+                style={[styles.input, { borderColor: colors.border, backgroundColor: colors.card, justifyContent: 'center' }]}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <CalendarIcon size={18} color={colors.icon} />
+                  <Text style={{ color: date ? colors.text : colors.icon }}>
+                    {date ? date.toDateString() : 'Select Due Date'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={date || new Date()}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(false);
+                    if (selectedDate) setDate(selectedDate);
+                  }}
+                />
+              )}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <FormLabel>Description</FormLabel>
+              <TextInput
+                style={[styles.textArea, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}
+                placeholder="Add details..."
+                placeholderTextColor={colors.icon}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                value={description}
+                onChangeText={setDescription}
+              />
+            </View>
+          </ScrollView>
+        ) : (
+          <View style={styles.voiceContainer}>
             <View style={styles.micWrapper}>
-              {state === 'recording' && (
-                <Animated.View style={[styles.pulseRing, { backgroundColor: colors.tint + '40' }, animatedStyle]} />
+              {isRecording && (
+                <Animated.View style={[styles.pulseRing, { backgroundColor: colors.tint + '40' }, animatedMicStyle]} />
               )}
               <TouchableOpacity
                 style={[
                   styles.micButton,
-                  { backgroundColor: state === 'recording' ? '#ef4444' : colors.tint }
+                  { backgroundColor: isRecording ? '#ef4444' : colors.tint }
                 ]}
-                onPress={handleMicPress}
-                disabled={state === 'processing'}
+                onPress={isRecording ? stopRecording : startRecording}
+                disabled={isProcessing}
               >
-                {state === 'processing' ? (
+                {isProcessing ? (
                   <ActivityIndicator color="#fff" size="large" />
+                ) : isRecording ? (
+                  <Pause size={48} color="#fff" />
                 ) : (
                   <Mic size={48} color="#fff" />
                 )}
               </TouchableOpacity>
             </View>
-            
+
             <Text style={[styles.statusText, { color: colors.text }]}>
-              {state === 'idle' && "Tap to start listening"}
-              {state === 'recording' && "Listening..."}
-              {state === 'processing' && "Processing..."}
+              {isProcessing ? "Processing..." : isRecording ? "Listening..." : "Tap to Speak"}
             </Text>
-            
-            {state === 'recording' && (
-              <View style={styles.waveContainer}>
-                {[...Array(5)].map((_, i) => (
-                  <View key={i} style={[styles.waveBar, { backgroundColor: colors.tint, height: 20 + Math.random() * 30 }]} />
-                ))}
-              </View>
-            )}
+
+            <Text style={[styles.hintText, { color: colors.icon }]}>
+              {transcript || "Try: \"Create a high priority task to review the code by tomorrow\""}
+            </Text>
           </View>
-        ) : (
-          <ScrollView style={styles.reviewContainer}>
-            <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.icon }]}>TRANSCRIPT</Text>
-              <Text style={[styles.transcriptText, { color: colors.text }]}>{transcript}</Text>
-            </View>
-
-            <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.icon }]}>EXTRACTED DETAILS</Text>
-              
-              <View style={styles.fieldRow}>
-                <Text style={[styles.fieldLabel, { color: colors.icon }]}>Title</Text>
-                <Text style={[styles.fieldValue, { color: colors.text }]}>{MOCK_PARSED.title}</Text>
-              </View>
-              
-              <View style={styles.divider} />
-              
-              <View style={styles.fieldRow}>
-                <Text style={[styles.fieldLabel, { color: colors.icon }]}>Due Date</Text>
-                <View style={styles.tagContainer}>
-                  <Calendar size={14} color={colors.tint} />
-                  <Text style={[styles.fieldValue, { color: colors.text }]}>{MOCK_PARSED.dueDate}</Text>
-                </View>
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.fieldRow}>
-                <Text style={[styles.fieldLabel, { color: colors.icon }]}>Priority</Text>
-                <View style={[styles.badge, { backgroundColor: '#ef444420' }]}>
-                  <Text style={[styles.badgeText, { color: '#ef4444' }]}>{MOCK_PARSED.priority}</Text>
-                </View>
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.fieldRow}>
-                <Text style={[styles.fieldLabel, { color: colors.icon }]}>Tags</Text>
-                <View style={styles.tagsWrapper}>
-                  {MOCK_PARSED.tags.map(tag => (
-                    <View key={tag} style={[styles.tag, { backgroundColor: colors.background }]}>
-                      <Tag size={12} color={colors.icon} />
-                      <Text style={[styles.tagText, { color: colors.icon }]}>{tag}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.actions}>
-              <TouchableOpacity style={[styles.actionBtn, { borderColor: colors.border }]} onPress={() => setState('idle')}>
-                <Text style={[styles.actionBtnText, { color: colors.text }]}>Try Again</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.tint, borderColor: colors.tint }]} onPress={handleSave}>
-                <Check size={20} color="#fff" />
-                <Text style={[styles.actionBtnText, { color: '#fff' }]}>Create Task</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
         )}
+      </View>
+
+      {/* Footer Actions */}
+      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.footerBtn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]}
+          onPress={() => router.back()}
+        >
+          <Text style={[styles.footerBtnText, { color: colors.text }]}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.footerBtn, { backgroundColor: colors.tint }]}
+          onPress={handleSave}
+        >
+          <Check size={20} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={[styles.footerBtnText, { color: '#fff' }]}>Save Task</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -189,6 +370,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
+    paddingTop: Platform.OS === 'android' ? 40 : 20,
   },
   title: {
     fontSize: 20,
@@ -197,27 +379,92 @@ const styles = StyleSheet.create({
   closeBtn: {
     padding: 4,
   },
+  tabContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 12,
+    marginBottom: 20,
+  },
+  tab: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    position: 'relative',
+  },
+  tabText: {
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  badgeDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
   content: {
     flex: 1,
+  },
+  formContainer: {
     paddingHorizontal: 20,
   },
-  recordingContainer: {
+  voiceContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 40,
+    paddingHorizontal: 20,
+    marginTop: -40,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  input: {
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+  },
+  textArea: {
+    height: 120,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  selectContainer: {
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 12,
+    justifyContent: 'center',
+  },
+  selectButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    width: '100%',
+    height: '100%',
   },
   micWrapper: {
     width: 120,
     height: 120,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  pulseRing: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    borderRadius: 60,
+    marginBottom: 30,
   },
   micButton: {
     width: 80,
@@ -231,104 +478,40 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
+  pulseRing: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 60,
+  },
   statusText: {
-    fontSize: 18,
-    fontWeight: '500',
-  },
-  waveContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: 60,
-  },
-  waveBar: {
-    width: 6,
-    borderRadius: 3,
-  },
-  reviewContainer: {
-    flex: 1,
-  },
-  section: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    opacity: 0.7,
-  },
-  transcriptText: {
-    fontSize: 18,
-    lineHeight: 28,
-  },
-  fieldRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  fieldValue: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '600',
+    marginBottom: 12,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#e2e8f0', // simplistic divider
-    opacity: 0.1,
+  hintText: {
+    textAlign: 'center',
+    fontSize: 14,
+    maxWidth: '80%',
+    lineHeight: 20,
   },
-  tagContainer: {
+  footer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  tagsWrapper: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  tagText: {
-    fontSize: 12,
-  },
-  actions: {
-    flexDirection: 'row',
+    padding: 20,
+    borderTopWidth: 1,
     gap: 16,
-    marginBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
   },
-  actionBtn: {
+  footerBtn: {
     flex: 1,
-    height: 56,
+    height: 50,
     borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    flexDirection: 'row',
   },
-  actionBtnText: {
-    fontSize: 16,
+  footerBtnText: {
     fontWeight: '600',
+    fontSize: 16,
   },
 });

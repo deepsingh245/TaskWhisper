@@ -38,6 +38,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
+  const [tag, setTag] = useState('');
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -56,6 +57,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
     setDate(undefined);
     setStatus(TaskStatus.TODO);
     setDescription('');
+    setTag('');
   };
 
   useEffect(() => {
@@ -118,7 +120,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
       description,
       priority,
       due_date: date,
-      tag: '',
+      tag: tag || 'General',
       status,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -169,7 +171,9 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
         setTitle(data.title);
         setDescription(data.description);
         setPriority(data.priority.toLowerCase());
+        setPriority(data.priority.toLowerCase());
         setDate(data.dueDate ? new Date(data.dueDate) : undefined);
+        setTag(data.tag);
 
         setIsProcessing(false);
         setIsListening(false);
@@ -211,6 +215,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
         dueDate: response.data.dueDate ? new Date(response.data.dueDate) : undefined,
         status: response.data.status || "to-do",
         description: response.data.description || "",
+        tag: response.data.tag || "General",
       };
     } catch (error: any) {
       console.error("Voice task upload error:", error);
@@ -222,6 +227,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
         dueDate: undefined,
         status: "to-do",
         description: "",
+        tag: "General",
       };
     }
   };
@@ -295,6 +301,17 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                 </Select>
               </div>
 
+              {/* Tag */}
+              <div className="space-y-2">
+                <Label htmlFor="tag">Tag</Label>
+                <Input
+                  id="tag"
+                  placeholder="e.g., Work, Personal"
+                  value={tag}
+                  onChange={(e) => setTag(e.target.value)}
+                />
+              </div>
+
               {/* Due Date*/}
               <div className="space-y-2">
                 <Label>Due Date</Label>
@@ -321,7 +338,7 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                         setDate(d);
                         setIsOpen(false);
                       }}
-                      initialFocus
+                      initialFocus={false}
                     />
                   </PopoverContent>
                 </Popover>
@@ -436,6 +453,10 @@ const NewTaskModal = ({ open, onOpenChange }: NewTaskModalProps) => {
                             <SelectItem value={TaskStatus.DONE}>Done</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="grid gap-1">
+                        <Label className="text-xs text-muted-foreground">Tag</Label>
+                        <Input value={tag} onChange={(e) => setTag(e.target.value)} />
                       </div>
                       <div className="grid gap-1">
                         <Label className="text-xs text-muted-foreground">Due Date</Label>

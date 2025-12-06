@@ -6,23 +6,34 @@ import { BlurView } from 'expo-blur';
 import { Mail, Lock, ArrowRight, Chrome, Facebook, User } from 'lucide-react-native';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppDispatch, useAppSelector } from '@/app/store/hooks';
+import { registerUser } from '@/app/store/thunks/authThunks';
 
 export default function SignupScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const [loading, setLoading] = useState(false);
+
+  const dispatch = useAppDispatch();
+  const { isLoading, error } = useAppSelector((state) => state.auth);
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSignup = () => {
-    setLoading(true);
-    // Simulate signup delay
-    setTimeout(() => {
-      setLoading(false);
-      router.replace('/(tabs)');
-    }, 1500);
+  const handleSignup = async () => {
+    if (!name || !email || !password) return;
+
+    try {
+      const resultAction = await dispatch(registerUser({ name, email, password }));
+      if (registerUser.fulfilled.match(resultAction)) {
+        router.replace('/(tabs)');
+      } else {
+        console.log("Signup failed", resultAction.payload);
+      }
+    } catch (err) {
+      console.error("Signup Error", err);
+    }
   };
 
   return (
@@ -33,7 +44,7 @@ export default function SignupScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.background}
       />
-      
+
       {/* Background Orbs */}
       <View style={[styles.orb, { top: '10%', left: '-10%', backgroundColor: colors.primary, opacity: 0.2 }]} />
       <View style={[styles.orb, { bottom: '10%', right: '-10%', backgroundColor: colors.secondary, opacity: 0.2 }]} />
@@ -46,6 +57,12 @@ export default function SignupScreen() {
               Enter your details to get started with TaskWhisper
             </Text>
           </View>
+
+          {error && (
+            <View style={{ marginBottom: 10, padding: 10, backgroundColor: 'rgba(255, 0, 0, 0.1)', borderRadius: 8 }}>
+              <Text style={{ color: 'red', textAlign: 'center' }}>{error}</Text>
+            </View>
+          )}
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
@@ -96,9 +113,9 @@ export default function SignupScreen() {
             <TouchableOpacity
               style={[styles.button, { backgroundColor: colors.tint }]}
               onPress={handleSignup}
-              disabled={loading}
+              disabled={isLoading}
             >
-              {loading ? (
+              {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <View style={styles.buttonContent}>

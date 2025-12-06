@@ -1,16 +1,35 @@
-import { StyleSheet, View, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
+import React from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { User, Settings, LogOut, Bell, Shield, CircleHelp as HelpCircle, ChevronRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useAppDispatch, useAppSelector } from '@/app/store/hooks';
+import { logoutUser } from '@/app/store/thunks/authThunks';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
 
   const handleLogout = () => {
-    router.replace('/auth/login');
+    Alert.alert(
+      "Log Out",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Log Out",
+          style: "destructive",
+          onPress: async () => {
+            await dispatch(logoutUser());
+            router.replace('/auth/login');
+          }
+        }
+      ]
+    );
   };
 
   const MenuItem = ({ icon: Icon, label, color }: { icon: any, label: string, color?: string }) => (
@@ -30,12 +49,12 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <View style={[styles.avatarContainer, { borderColor: colors.tint }]}>
           <Image
-            source={{ uri: 'https://github.com/shadcn.png' }}
+            source={{ uri: user?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'user'}` }}
             style={styles.avatar}
           />
         </View>
-        <Text style={[styles.name, { color: colors.text }]}>Simranjeet</Text>
-        <Text style={[styles.email, { color: colors.icon }]}>simranjeet@example.com</Text>
+        <Text style={[styles.name, { color: colors.text }]}>{user?.full_name || user?.name || 'User'}</Text>
+        <Text style={[styles.email, { color: colors.icon }]}>{user?.email}</Text>
         <View style={[styles.badge, { backgroundColor: colors.tint + '20' }]}>
           <Text style={[styles.badgeText, { color: colors.tint }]}>Pro Member</Text>
         </View>
@@ -55,8 +74,8 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity 
-          style={[styles.logoutButton, { borderColor: '#ef4444' }]} 
+        <TouchableOpacity
+          style={[styles.logoutButton, { borderColor: '#ef4444' }]}
           onPress={handleLogout}
         >
           <LogOut size={20} color="#ef4444" />

@@ -1,71 +1,112 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { Calendar, Flag, MoreHorizontal, Clock, CheckCircle2, Circle } from 'lucide-react-native';
+import { Image } from 'expo-image';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Calendar, Tag } from 'lucide-react-native';
+import { Task, TaskPriority, TaskStatus } from '@/app/store/types';
 
 interface TaskCardProps {
-  title: string;
-  dueDate?: string;
-  priority: 'High' | 'Medium' | 'Low';
-  tags?: string[];
-  status: 'To Do' | 'In Progress' | 'Done';
+  task: Task;
+  onPress?: () => void;
+  onLongPress?: () => void; // For actions like Delete/Edit
 }
 
-export function TaskCard({ title, dueDate, priority, tags = [], status }: TaskCardProps) {
+export const TaskCard: React.FC<TaskCardProps> = ({ task, onPress, onLongPress }) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  const getPriorityColor = (p: string) => {
-    switch (p) {
-      case 'High': return '#ef4444';
-      case 'Medium': return '#f59e0b';
-      case 'Low': return '#10b981';
-      default: return colors.text;
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case TaskPriority.CRITICAL: return '#ef4444'; // Red-500
+      case TaskPriority.HIGH: return '#f97316'; // Orange-500
+      case TaskPriority.MEDIUM: return '#3b82f6'; // Blue-500
+      default: return '#64748b'; // Slate-500
+    }
+  };
+
+  const getPriorityBgColor = (priority: string) => {
+    switch (priority) {
+      case TaskPriority.CRITICAL: return 'rgba(239, 68, 68, 0.1)';
+      case TaskPriority.HIGH: return 'rgba(249, 115, 22, 0.1)';
+      case TaskPriority.MEDIUM: return 'rgba(59, 130, 246, 0.1)';
+      default: return 'rgba(100, 116, 139, 0.1)';
     }
   };
 
   return (
-    <TouchableOpacity style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={styles.header}>
-        <View style={[styles.badge, { backgroundColor: getPriorityColor(priority) + '20' }]}>
-          <Text style={[styles.badgeText, { color: getPriorityColor(priority) }]}>{priority}</Text>
-        </View>
-        {dueDate && (
-          <View style={styles.dateContainer}>
-            <Calendar size={12} color={colors.icon} />
-            <Text style={[styles.dateText, { color: colors.icon }]}>{dueDate}</Text>
+    <TouchableOpacity
+      onPress={onPress}
+      onLongPress={onLongPress}
+      activeOpacity={0.8}
+      style={styles.container}
+    >
+      <BlurView
+        intensity={colorScheme === 'dark' ? 20 : 60}
+        tint={colorScheme === 'dark' ? 'dark' : 'light'}
+        style={[styles.card, { borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+      >
+        <View style={styles.header}>
+          <View style={styles.tagContainer}>
+            <Text style={[styles.tag, { color: colors.icon }]}>{task.tag || 'General'}</Text>
           </View>
-        )}
-      </View>
-      
-      <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>{title}</Text>
-      
-      <View style={styles.footer}>
-        <View style={styles.tags}>
-          {tags.map((tag, index) => (
-            <View key={index} style={[styles.tag, { backgroundColor: colors.background }]}>
-              <Tag size={10} color={colors.icon} />
-              <Text style={[styles.tagText, { color: colors.icon }]}>{tag}</Text>
-            </View>
-          ))}
+          <View style={[styles.priorityBadge, { backgroundColor: getPriorityBgColor(task.priority) }]}>
+            <Flag size={12} color={getPriorityColor(task.priority)} style={{ marginRight: 4 }} />
+            <Text style={[styles.priorityText, { color: getPriorityColor(task.priority) }]}>
+              {task.priority}
+            </Text>
+          </View>
         </View>
-      </View>
+
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+          {task.title}
+        </Text>
+
+        <View style={styles.footer}>
+          <View style={styles.userDateContainer}>
+            <Image
+              source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${task.id}` }}
+              style={styles.avatar}
+            />
+            <View style={styles.dateContainer}>
+              <Calendar size={12} color={colors.icon} style={{ marginRight: 4 }} />
+              <Text style={[styles.dateText, { color: colors.icon }]}>
+                {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No date'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.statusContainer}>
+            {task.status === TaskStatus.DONE ? (
+              <CheckCircle2 size={16} color="#10b981" />
+            ) : task.status === TaskStatus.IN_PROGRESS ? (
+              <Clock size={16} color="#3b82f6" />
+            ) : (
+              <Circle size={16} color={colors.icon} />
+            )}
+          </View>
+        </View>
+      </BlurView>
     </TouchableOpacity>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  card: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 12,
+  container: {
+    marginVertical: 6,
+    borderRadius: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 2,
+  },
+  card: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   header: {
     flexDirection: 'row',
@@ -73,47 +114,62 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  badge: {
+  tagContainer: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
-  badgeText: {
+  tag: {
+    fontSize: 10,
+    fontWeight: '500',
+    opacity: 0.8,
+  },
+  priorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  priorityText: {
     fontSize: 10,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 16,
+    lineHeight: 22,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  userDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  avatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#eee',
+  },
   dateContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
   dateText: {
     fontSize: 12,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-    lineHeight: 24,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tags: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  tagText: {
-    fontSize: 10,
-  },
+  statusContainer: {
+    // 
+  }
 });

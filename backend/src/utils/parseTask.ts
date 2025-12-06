@@ -7,17 +7,11 @@ interface ParsedTask {
     priority: 'High' | 'Medium' | 'Low';
     status: 'To Do' | 'In Progress' | 'Done';
     description: string;
+    tag: string;
 }
 
-/**
- * Simple parsing logic to extract:
- *  - title
- *  - dueDate (ISO string or null)
- *  - priority (High / Medium / Low)
- *  - status (To Do / In Progress / Done)
- *
- * Input: transcript string
- */
+const VALID_TAGS = ['work', 'home', 'life', 'kitchen', 'school', 'office', 'personal', 'health', 'finance', 'waiting', 'errand'];
+
 export default function parseTask(transcript: string): ParsedTask {
     const text = (transcript || '').trim();
 
@@ -47,11 +41,21 @@ export default function parseTask(transcript: string): ParsedTask {
     if (/\b(in progress|doing|started|ongoing)\b/.test(textLower)) status = 'In Progress';
     if (/\b(done|completed|finish(ed)?)\b/.test(textLower)) status = 'Done';
 
-    // 4) Title extraction using compromise
-    // Remove common filler verbs and date expressions for cleaner title.
+    // 4) Tag detection
+    let tag = 'general';
+    // Check for "for [tag]" or "in [tag]" or just the tag word if it's distinctive
+    for (const t of VALID_TAGS) {
+        // We look for strict word boundaries to avoid partial matches
+        if (new RegExp(`\\b${t}\\b`, 'i').test(textLower)) {
+            tag = t;
+            break; // take the first found tag
+        }
+    }
+
+    // 5) Title extraction using compromise
     let title = extractTitle(text);
 
-    // 5) Description: Use the text with command prefixes removed, but keep details like date/priority
+    // 6) Description: Use the text with command prefixes removed
     let description = removeCommandPrefix(text);
 
     return {
@@ -59,7 +63,8 @@ export default function parseTask(transcript: string): ParsedTask {
         dueDate,
         priority,
         status,
-        description
+        description,
+        tag
     };
 }
 

@@ -42,11 +42,10 @@ const EditTaskModal = () => {
     const [date, setDate] = useState<Date | undefined>();
     const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
     const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
+    const [tag, setTag] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-
     const [isDateOpen, setIsDateOpen] = useState(false);
 
-    // Load task when opening modal
     useEffect(() => {
         if (editingTask) {
             setTitle(editingTask.title);
@@ -54,6 +53,7 @@ const EditTaskModal = () => {
             setDate(editingTask.due_date ? new Date(editingTask.due_date) : undefined);
             setPriority(editingTask.priority);
             setStatus(editingTask.status);
+            setTag(editingTask.tag || 'General');
         }
     }, [editingTask]);
 
@@ -81,6 +81,7 @@ const EditTaskModal = () => {
                         description,
                         priority,
                         status,
+                        tag: tag || 'General',
                         due_date: date ?? null,
                         updated_at: new Date().toISOString(),
                     },
@@ -155,11 +156,21 @@ const EditTaskModal = () => {
                             </Select>
                         </div>
 
+                        {/* Tag */}
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-tag">Tag</Label>
+                            <Input
+                                id="edit-tag"
+                                value={tag}
+                                onChange={(e) => setTag(e.target.value)}
+                                placeholder="e.g. Work, Personal"
+                            />
+                        </div>
+
                         {/* Due Date */}
                         <div className="space-y-2">
                             <Label>Due Date</Label>
-
-                            <Popover open={isDateOpen} onOpenChange={setIsDateOpen} modal={true}>
+                            <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
                                         variant="outline"
@@ -181,7 +192,7 @@ const EditTaskModal = () => {
                                             setDate(d);
                                             setIsDateOpen(false);
                                         }}
-                                        initialFocus={false} // 🔥 Prevent screen freezing
+                                        initialFocus={false}
                                     />
                                 </PopoverContent>
                             </Popover>

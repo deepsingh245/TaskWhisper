@@ -31,8 +31,8 @@ export default function TabLayout() {
           },
         }),
         tabBarBackground: () => (
-          Platform.OS === 'ios' ? 
-            <BlurView intensity={80} style={{ flex: 1 }} tint={colorScheme === 'dark' ? 'dark' : 'light'} /> 
+          Platform.OS === 'ios' ?
+            <BlurView intensity={80} style={{ flex: 1 }} tint={colorScheme === 'dark' ? 'dark' : 'light'} />
             : undefined
         ),
       }}>
@@ -44,7 +44,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="profile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,

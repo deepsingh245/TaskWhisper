@@ -8,7 +8,8 @@ import {
   Menu,
   Bell,
   Search,
-  Plus
+  Plus,
+  User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,13 +70,13 @@ const DashboardLayout = () => {
       <aside className="hidden md:block w-64 border-r bg-card/50 backdrop-blur-xl">
         <SidebarContent handleLogout={handleLogout} />
       </aside>
-      <AnimatedThemeToggler className="fixed top-0 right-0 m-2.5 z-50 rounded-full" />
+      <AnimatedThemeToggler className="fixed top-0 right-0 m-2.5 z-100 rounded-full" />
 
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <header className="h-16 border-b bg-card/50 backdrop-blur-xl flex items-center justify-between px-4 md:px-6">
+        <header className="h-16 border-b bg-card/50 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 relative z-50">
           <div className="flex items-center gap-4">
             <Sheet>
               <SheetTrigger asChild>
@@ -105,7 +106,7 @@ const DashboardLayout = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full left-0 w-full mt-2 bg-card/95 backdrop-blur-xl border border-border/50 rounded-lg shadow-xl overflow-hidden max-h-[300px] overflow-y-auto"
+                    className="absolute top-full left-0 w-full mt-2 bg-card/95 backdrop-blur-xl border border-border/50 rounded-lg shadow-xl overflow-hidden max-h-[300px] overflow-y-auto z-50"
                   >
                     {filteredTasks.length > 0 ? (
                       <div className="py-2">
@@ -214,10 +215,18 @@ const SidebarContent = ({ handleLogout }: { handleLogout: () => void }) => (
         <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Settings
         </div>
-        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-all">
-          <Settings className="h-5 w-5" />
-          Preferences
-        </button>
+        <NavLink
+          to="/dashboard/profile"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-md transition-all ${isActive
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`
+          }
+        >
+          <User className="h-5 w-5" />
+          Profile
+        </NavLink>
       </div>
     </div>
     <div className="p-4">
