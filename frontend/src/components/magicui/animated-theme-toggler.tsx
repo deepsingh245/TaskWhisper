@@ -13,24 +13,36 @@ export const AnimatedThemeToggler = ({ className }: props) => {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
-  // Initialize theme state from document
+  // Initialize theme state from localStorage or system preference
   useEffect(() => {
-    const isDark = document.documentElement.classList.contains("dark");
-    setIsDarkMode(isDark);
+    const theme = localStorage.getItem("theme");
+    const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+    if (theme === "dark" || (!theme && systemDark)) {
+      document.documentElement.classList.add("dark");
+      setIsDarkMode(true);
+    } else {
+      document.documentElement.classList.remove("dark");
+      setIsDarkMode(false);
+    }
   }, []);
 
   const changeTheme = async () => {
     if (!buttonRef.current) return;
 
-    // Check if View Transitions API is supported
+    const toggleTheme = () => {
+      const isDark = document.documentElement.classList.toggle("dark");
+      setIsDarkMode(isDark);
+      localStorage.setItem("theme", isDark ? "dark" : "light");
+      return isDark;
+    };
+
     const supportsViewTransitions = "startViewTransition" in document;
 
     if (supportsViewTransitions) {
-      // Use View Transitions API for smooth animation
       await document.startViewTransition(() => {
         flushSync(() => {
-          const dark = document.documentElement.classList.toggle("dark");
-          setIsDarkMode(dark);
+          toggleTheme();
         });
       }).ready;
 
@@ -57,9 +69,7 @@ export const AnimatedThemeToggler = ({ className }: props) => {
         }
       );
     } else {
-      // Fallback for browsers that don't support View Transitions API
-      const dark = document.documentElement.classList.toggle("dark");
-      setIsDarkMode(dark);
+      toggleTheme();
     }
   };
 
@@ -75,9 +85,9 @@ export const AnimatedThemeToggler = ({ className }: props) => {
       aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
     >
       {isDarkMode ? (
-        <SunDim className="h-6 w-6 text-foreground" />
+        <SunDim className="h-5 w-5 text-foreground" />
       ) : (
-        <Moon className="h-6 w-6 text-foreground" />
+        <Moon className="h-5 w-5 text-foreground" />
       )}
     </button>
   );

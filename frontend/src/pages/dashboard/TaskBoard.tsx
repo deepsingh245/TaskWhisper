@@ -10,8 +10,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Task, TaskPriority, TaskStatus } from '@/store/types';
 import GlobalLoader from '@/shared/global-loader';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchTasks } from '@/store/thunks/taskThunks';
+import { deleteTask, fetchTasks, updateTask } from '@/store/thunks/taskThunks';
 import { openEditModal } from '@/store/slices/uiSlice';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 
 const TaskBoard = () => {
@@ -66,31 +76,53 @@ const TaskBoard = () => {
 
     const { source, destination } = result;
 
+    // Helper to map status ID to state key
+    const getColumnKey = (status: string): keyof typeof tasks | undefined => {
+      if (status === TaskStatus.TODO) return 'todo';
+      if (status === TaskStatus.IN_PROGRESS) return 'inProgress';
+      if (status === TaskStatus.DONE) return 'done';
+      return undefined;
+    };
+
+    const sourceStatus = source.droppableId;
+    const destStatus = destination.droppableId;
+
+    const sourceKey = getColumnKey(sourceStatus);
+    const destKey = getColumnKey(destStatus);
+
+    if (!sourceKey || !destKey) return;
+
     // If dropped in same column
-    if (source.droppableId === destination.droppableId) {
-      const column = source.droppableId as keyof typeof tasks;
-      const copiedItems = [...tasks[column]];
+    if (sourceStatus === destStatus) {
+      const copiedItems = [...tasks[sourceKey]];
       const [removed] = copiedItems.splice(source.index, 1);
       copiedItems.splice(destination.index, 0, removed);
 
       setTasks({
         ...tasks,
-        [column]: copiedItems
+        [sourceKey]: copiedItems
       });
     } else {
       // Moving between columns
-      const sourceColumn = source.droppableId as keyof typeof tasks;
-      const destColumn = destination.droppableId as keyof typeof tasks;
-      const sourceItems = [...tasks[sourceColumn]];
-      const destItems = [...tasks[destColumn]];
+      const sourceItems = [...tasks[sourceKey]];
+      const destItems = [...tasks[destKey]];
       const [removed] = sourceItems.splice(source.index, 1);
-      destItems.splice(destination.index, 0, removed);
+
+      // Update the status of the moved task locally
+      const updatedTask = { ...removed, status: destStatus as TaskStatus };
+      destItems.splice(destination.index, 0, updatedTask);
 
       setTasks({
         ...tasks,
-        [sourceColumn]: sourceItems,
-        [destColumn]: destItems
+        [sourceKey]: sourceItems,
+        [destKey]: destItems
       });
+
+      // Dispatch update to backend
+      dispatch(updateTask({
+        id: removed.id,
+        data: { status: destStatus as TaskStatus }
+      }));
     }
   };
 
@@ -110,9 +142,6 @@ const TaskBoard = () => {
           {title}
           <span className="bg-muted text-foreground px-2 py-0.5 rounded-full text-xs">{items.length}</span>
         </h3>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
       </div>
 
       <Droppable droppableId={id}>
@@ -129,7 +158,7 @@ const TaskBoard = () => {
                     ref={provided.innerRef}
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
-                    className={`cursor-grab active:cursor-grabbing rounded-md border-none shadow-sm hover:shadow-md transition-all ${snapshot.isDragging ? 'shadow-xl ring-2 ring-primary/20 rotate-2' : ''
+                    className={`cursor-grab active:cursor-grabbing rounded-md border-none bg-white dark:bg-blue-950/20 shadow-sm hover:shadow-md transition-all ${snapshot.isDragging ? 'shadow-xl ring-2 ring-primary/20 rotate-2' : ''
                       }`}
                   >
                     <CardContent className="p-4 space-y-3">
@@ -138,18 +167,20 @@ const TaskBoard = () => {
                           {task.tag}
                         </Badge>
                         <DropdownMenu>
-                          <DropdownMenuTrigger>
-                            <MoreHorizontal className="h-3 w-3" />
+                          <DropdownMenuTrigger className='p-1 cursor-pointer hover:bg-accent/100 rounded-sm'>
+                            <MoreHorizontal className="h-4 w-4" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => dispatch(openEditModal(task))}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-500">Delete</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setDeleteTaskId(task.id);
+                              setAlert(true);
+                            }} className="text-red-500">Delete</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
 
                       <h4 className="font-medium text-sm leading-tight">{task.title}</h4>
-
                       <div className="flex items-center justify-between pt-2">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
@@ -178,6 +209,15 @@ const TaskBoard = () => {
     </div>
   );
 
+  const deleteTaskHandler = () => {
+    dispatch(deleteTask(deleteTaskId));
+    setDeleteTaskId('');
+    setAlert(false);
+  };
+
+  const [alert, setAlert] = useState(false);
+  const [deleteTaskId, setDeleteTaskId] = useState('');
+
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <GlobalLoader show={loading} />
@@ -188,6 +228,20 @@ const TaskBoard = () => {
           <Column title="Done" id={TaskStatus.DONE} items={tasks.done} />
         </div>
       </div>
+      <AlertDialog open={alert} onOpenChange={setAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this task from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteTaskHandler}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DragDropContext>
   );
 };

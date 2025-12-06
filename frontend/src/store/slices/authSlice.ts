@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { AuthState, User } from "../types";
-import { loginUser, registerUser, logoutUser, checkAuth } from "../thunks/authThunks";
+import { loginUser, registerUser, logoutUser, checkAuth, updateProfile } from "../thunks/authThunks";
 import { getAccessToken, clearAccessToken } from "../services/tokenService";
 
 const initialState: AuthState = {
@@ -98,6 +98,12 @@ const authSlice = createSlice({
       state.user = null;
       state.accessToken = null;
       clearAccessToken();
+    });
+
+    // Update Profile
+    builder.addCase(updateProfile.fulfilled, (state, action) => {
+      // The payload is the updated user object
+      state.user = action.payload;
     });
   },
 });

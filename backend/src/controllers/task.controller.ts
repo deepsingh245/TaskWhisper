@@ -66,7 +66,8 @@ export const createTask = async (req: Request, res: Response) => {
 export const updateTask = async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    const { id, ...updates } = req.body;
+    const id = req.params.id;
+    const {...updates } = req.body;
 
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -97,7 +98,7 @@ export const updateTask = async (req: Request, res: Response) => {
 export const deleteTask = async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    const { id } = req.body; // Or req.params if you change the route
+    const id = req.params.id;
 
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });

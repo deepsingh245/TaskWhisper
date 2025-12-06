@@ -1,10 +1,17 @@
 export interface User {
-    name: string;
+    name?: string;
     email: string;
-    password: string;
+    password?: string;
     id?: string;
-    createdAt?: string;
-    updatedAt?: string;
+    user_metadata?: any;
+    app_metadata?: any;
+    aud?: string;
+    created_at?: string;
+    updated_at?: string; // Supabase uses updated_at
+    createdAt?: string; // Legacy
+    updatedAt?: string; // Legacy
+    avatar_url?: string;
+    full_name?: string;
     [key: string]: any;
 }
 

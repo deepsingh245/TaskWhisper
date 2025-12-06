@@ -24,12 +24,14 @@ import { useAppSelector } from '@/store/hooks';
 import { openEditModal } from '@/store/slices/uiSlice';
 import { Task } from '@/store/types';
 import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatedThemeToggler } from '@/components/magicui/animated-theme-toggler';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const { user } = useAppSelector((state) => state.auth);
 
   const dispatch = useAppDispatch();
   const { list: tasks } = useAppSelector((state) => state.tasks);
@@ -67,6 +69,8 @@ const DashboardLayout = () => {
       <aside className="hidden md:block w-64 border-r bg-card/50 backdrop-blur-xl">
         <SidebarContent handleLogout={handleLogout} />
       </aside>
+      <AnimatedThemeToggler className="fixed top-0 right-0 m-2.5 z-50 rounded-full" />
+
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -117,8 +121,8 @@ const DashboardLayout = () => {
                                 {task.description}
                               </span>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${task.priority === 'high' || task.priority === 'critical'
-                                  ? 'bg-red-500/10 text-red-500'
-                                  : 'bg-blue-500/10 text-blue-500'
+                                ? 'bg-red-500/10 text-red-500'
+                                : 'bg-blue-500/10 text-blue-500'
                                 }`}>
                                 {task.priority}
                               </span>
@@ -137,7 +141,7 @@ const DashboardLayout = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 mr-12">
             <Button
               onClick={() => setIsNewTaskOpen(true)}
               className="bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 shadow-lg shadow-primary/20"
@@ -145,14 +149,12 @@ const DashboardLayout = () => {
               <Plus className="mr-2 h-4 w-4" />
               New Task
             </Button>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
+            <Button variant="ghost" className="p-0 cursor-pointer" onClick={() => navigate('/dashboard/profile')}>
+              <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-primary/20 transition-all hover:ring-primary/50">
+                <AvatarImage src={user?.avatar_url} />
+                <AvatarFallback>CN</AvatarFallback>
+              </Avatar>
             </Button>
-            <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-primary/20 transition-all hover:ring-primary/50">
-              <AvatarImage src="https://github.com/shadcn.png" />
-              <AvatarFallback>CN</AvatarFallback>
-            </Avatar>
           </div>
         </header>
 

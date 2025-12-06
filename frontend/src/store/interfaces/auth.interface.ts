@@ -7,6 +7,7 @@ export interface LoginResponse {
 export interface SignupResponse {
   message: string;
   user: AuthUser;
+  accessToken: string;
 }
 
 export interface AuthUser {

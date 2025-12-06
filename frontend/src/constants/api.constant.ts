@@ -7,8 +7,9 @@ export const API_ROUTES = {
     SIGNUP: "/api/auth/signup",
     LOGIN: "/api/auth/login",
     LOGOUT: "/api/auth/logout",
-    CURRENT_USER: "/api/auth/me",
+    CURRENT_USER: "/api/auth/current-user",
     REFRESH: "/api/auth/refresh",
+    UPDATE_PROFILE: "/api/auth/update-profile",
   },
   TASKS: {
     GET_ALL: "/api/tasks/getTasks",

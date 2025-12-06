@@ -74,10 +74,27 @@ export const checkAuth = createAsyncThunk(
     try {
       const response = await authApi.getCurrentUser();
       const data = response as any;
-      if (data.success) {
-          return data.data;
+      if (data.user) {
+          return data.user;
       } else {
           return rejectWithValue(data.message);
+      }
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const updateProfile = createAsyncThunk(
+  "auth/update-profile",
+  async (data: { name?: string; avatarUrl?: string }, { rejectWithValue }) => {
+    try {
+      const response = await authApi.updateProfile(data);
+      const res = response as any;
+      if (res.user) {
+        return res.user;
+      } else {
+        return rejectWithValue(res.message);
       }
     } catch (error: any) {
       return rejectWithValue(error.message);

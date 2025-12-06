@@ -14,7 +14,6 @@ export const signup = async (req: Request, res: Response) => {
     });
     if (error) return res.status(400).json({ error: error.message });
 
-    // set HttpOnly refresh‑token cookie
     if (data.session?.refresh_token) {
       res.cookie('refreshToken', data.session.refresh_token, {
         httpOnly: true,
@@ -43,7 +42,6 @@ export const login = async (req: Request, res: Response) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return res.status(401).json({ error: error.message });
 
-    // set HttpOnly refresh‑token cookie
     if (data.session?.refresh_token) {
       res.cookie('refreshToken', data.session.refresh_token, {
         httpOnly: true,
@@ -67,7 +65,6 @@ export const login = async (req: Request, res: Response) => {
 export const refresh = async (req: Request, res: Response) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
-    console.log("🚀 ~ refresh ~ refreshToken:", refreshToken)
     if (!refreshToken) return res.status(401).json({ error: 'No refresh token' });
 
     const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
@@ -112,6 +109,39 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 
     res.status(200).json({ user });
   } catch {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// ---------- UPDATE PROFILE ----------
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' });
+    const token = authHeader.split(' ')[1];
+
+    const { name, avatarUrl } = req.body;
+
+    const updates: any = {};
+    if (name) updates.full_name = name;
+    if (avatarUrl) updates.avatar_url = avatarUrl;
+
+    const { data, error } = await supabase.auth.updateUser({
+      data: updates
+    });
+    
+    if (!req.user || !req.user.id) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { data: userData, error: updateError } = await supabase.auth.admin.updateUserById(
+      req.user.id,
+      { user_metadata: updates }
+    );
+
+    if (updateError) return res.status(400).json({ error: updateError.message });
+
+    res.status(200).json({ message: 'Profile updated', user: userData.user });
+  } catch (error: any) {
+    console.error(error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

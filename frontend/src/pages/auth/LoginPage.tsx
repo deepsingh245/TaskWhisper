@@ -26,7 +26,6 @@ const LoginPage = () => {
     setLoading(true);
     try {
       const resultAction = await dispatch(loginUser({ email, password }));
-      console.log("🚀 ~ handleLogin ~ resultAction:", resultAction)
       if (loginUser.fulfilled.match(resultAction)) {
         navigate('/dashboard');
       } else {

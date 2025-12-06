@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { signup, login, refresh, logout, getCurrentUser } from '../controllers/auth.controller';
+import { signup, login, refresh, logout, getCurrentUser, updateProfile } from '../controllers/auth.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -13,5 +13,6 @@ router.post('/refresh', refresh); // Refresh uses cookies, not Bearer token
 router.use(authMiddleware);
 router.post('/logout', logout);
 router.get('/current-user', getCurrentUser);
+router.put('/update-profile', updateProfile);
 
 export default router;

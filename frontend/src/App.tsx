@@ -4,6 +4,7 @@ import SignupPage from './pages/auth/SignupPage';
 import DashboardLayout from './pages/dashboard/DashboardLayout';
 import TaskBoard from './pages/dashboard/TaskBoard';
 import TaskList from './pages/dashboard/TaskList';
+import Profile from './pages/profile';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route index element={<Navigate to="/dashboard/board" replace />} />
         <Route path="board" element={<TaskBoard />} />
         <Route path="list" element={<TaskList />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
     </Routes>
   );

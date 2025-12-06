@@ -29,4 +29,9 @@ export const authApi = {
     const response = await axiosInstance.get<ApiResponse<User>>(API_ROUTES.AUTH.CURRENT_USER);
     return response.data;
   },
+
+  updateProfile: async (data: { name?: string; avatarUrl?: string }) => {
+    const response = await axiosInstance.put<ApiResponse<User>>(API_ROUTES.AUTH.UPDATE_PROFILE, data);
+    return response.data;
+  },
 };

@@ -9,14 +9,6 @@ export const getProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // You can fetch additional profile data from a 'profiles' table if you have one
-    // const { data: profile, error } = await supabase
-    //   .from('profiles')
-    //   .select('*')
-    //   .eq('id', user.id)
-    //   .single();
-
-    // For now, return the auth user object
     res.status(200).json({ user });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch profile' });
@@ -32,7 +24,6 @@ export const updateProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Example: Update user metadata in Supabase Auth
     const { data, error } = await supabase.auth.updateUser({
       data: updates
     });
