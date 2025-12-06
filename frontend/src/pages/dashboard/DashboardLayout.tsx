@@ -152,7 +152,7 @@ const DashboardLayout = () => {
             </Button>
             <Button variant="ghost" className="p-0 cursor-pointer" onClick={() => navigate('/dashboard/profile')}>
               <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-primary/20 transition-all hover:ring-primary/50">
-                <AvatarImage src={user?.avatar_url} />
+                <AvatarImage src={user?.user_metadata?.avatar_url} />
                 <AvatarFallback>CN</AvatarFallback>
               </Avatar>
             </Button>

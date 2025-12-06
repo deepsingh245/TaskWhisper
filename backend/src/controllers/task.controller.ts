@@ -47,7 +47,8 @@ export const createTask = async (req: Request, res: Response) => {
             description,
             due_date,
             priority: priority || 'Medium',
-            status: status || 'To Do'
+            status: status || 'To Do',
+            tag: req.body.tag || 'General'
         }
       ])
       .select()

@@ -171,7 +171,10 @@ const TaskBoard = () => {
                             <MoreHorizontal className="h-4 w-4" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => dispatch(openEditModal(task))}>Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              // Delay opening to ensure dropdown closes and doesn't conflict with body interaction locks
+                              setTimeout(() => dispatch(openEditModal(task)), 0);
+                            }}>Edit</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
                               setDeleteTaskId(task.id);
                               setAlert(true);

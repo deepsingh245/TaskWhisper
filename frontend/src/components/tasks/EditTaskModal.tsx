@@ -5,6 +5,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,7 +103,9 @@ const EditTaskModal = () => {
     };
 
     return (
-        <Dialog open={isEditModalOpen} onOpenChange={(open) => !open && handleClose()}>
+        <Dialog open={isEditModalOpen} onOpenChange={(open) => {
+            if (!open) handleClose();
+        }}>
             <DialogContent className="sm:max-w-[600px] bg-background/95 backdrop-blur-xl border-white/20">
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">
@@ -184,7 +187,7 @@ const EditTaskModal = () => {
                                     </Button>
                                 </PopoverTrigger>
 
-                                <PopoverContent className="w-auto p-0" align="start">
+                                <PopoverContent className="w-auto p-0 z-[1000] pointer-events-auto" align="start">
                                     <Calendar
                                         mode="single"
                                         selected={date}
@@ -212,10 +215,17 @@ const EditTaskModal = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end gap-3 pt-4">
-                    <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+                <DialogFooter className="flex justify-end gap-3 pt-4">
+                    {/* Cancel Button */}
+                    <Button
+                        variant="outline"
+                        onClick={handleClose}
+                        disabled={isSubmitting}
+                    >
                         Cancel
                     </Button>
+
+                    {/* Save Button */}
                     <Button onClick={handleSave} disabled={isSubmitting}>
                         {isSubmitting ? (
                             <>
@@ -226,7 +236,8 @@ const EditTaskModal = () => {
                             "Save Changes"
                         )}
                     </Button>
-                </div>
+                </DialogFooter>
+
             </DialogContent>
         </Dialog>
     );
