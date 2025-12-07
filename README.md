@@ -58,11 +58,17 @@ Built with a modern tech stack—**React, Redux Toolkit, Node.js, and Supabase**
 - **Version Control**: Git
 
 ### Mobile
-- **Framework**: React Native + Expo
-- **Language**: TypeScript
-- **Styling**: NativeWind (Tailwind CLI)
-- **State Management**: Redux Toolkit
-- **Navigation**: Expo Router
+-   **Framework**: React Native + Expo
+-   **Language**: TypeScript
+-   **Styling**: NativeWind (Tailwind CLI)
+-   **State Management**: Redux Toolkit
+-   **Navigation**: Expo Router
+
+### Infrastructure & Services
+-   **Database**: Supabase (PostgreSQL)
+-   **Auth**: Supabase Auth
+-   **AI Provider**: Deepgram (Nova-2 Model)
+-   **Email**: Supabase Auth (Transactional)
 
 ---
 
@@ -244,6 +250,66 @@ sequenceDiagram
     Frontend->>Redux: Dispatch setCredentials(Token)
     Redux->>Frontend: Update UI (Redirect to Dashboard)
 ```
+
+---
+
+---
+
+## 📡 API Documentation
+
+### Voice
+-   **`POST /api/voice/voice-task`**
+    -   **Body**: `FormData` (`audio`: Blob, `language`: string)
+    -   **Response**: `{ transcript, title, dueDate, priority, status, tag, description }`
+    -   **Description**: Uploads audio, transcribes via Deepgram (using selected language), and parses intent.
+
+### Tasks
+-   **`GET /api/tasks/getTasks`**
+    -   **Response**: `Task[]`
+    -   **Description**: Fetches all tasks for the authenticated user.
+-   **`POST /api/tasks/createTask`**
+    -   **Body**: `{ title, status, priority, dueDate, tag, description }`
+    -   **Response**: Created `Task` object.
+-   **`PATCH /api/tasks/updateTask/:id`**
+    -   **Body**: Partial task object.
+    -   **Response**: Updated `Task` object.
+-   **`DELETE /api/tasks/deleteTask/:id`**
+    -   **Response**: `{ message: "Task deleted" }`
+
+### Auth
+-   **`POST /api/auth/signup`**: Register new user.
+-   **`POST /api/auth/login`**: Authenticate existing user.
+
+---
+
+## 💡 Decisions & Assumptions
+
+### Design Decisions
+1.  **Voice-First UX**: The UI prioritizes the microphone button, treating voice as a primary input method rather than an accessibility add-on.
+2.  **Optimistic UI**: Redux handles state updates instantly (e.g., dragging a card), syncing with the backend in the background to prevent UI lag.
+3.  **Supabase RLS**: Security is handled at the database level using Row Level Security, ensuring users can strictly access only their own data.
+4.  **NativeWind (Mobile)**: Chosen to share styling patterns (Tailwind class names) between the Web and Mobile codebases.
+
+### Assumptions
+-   **Browser Support**: Assumes a modern browser (Chrome/Edge/Safari) compliant with the Web Audio API.
+-   **Connectivity**: Voice processing requires an active internet connection (for Deepgram & Backend).
+-   **Single User Scope**: Tasks are private to the user; team sharing features are not yet implemented.
+
+---
+
+## 🤖 AI Tools Usage
+
+This project was built with the assistance of **Google's Antigravity Agent**, an advanced coding agent.
+
+### How it Helped
+-   **Boilerplate & Architecture**: Generated the initial Redux slices, node/express structure, and mobile app scaffolding.
+-   **Complex Logic**: Implemented the `parseTask.ts` logic to map natural language to structured JSON (e.g., regex for "tomorrow at 5pm").
+-   **Debugging**: Solved complex issues like **Android Bundling errors** (Babel config mismatches), **CSS z-index conflicts**, and **Modal focus traps**.
+-   **Refactoring**: seamlessly added multi-language support across the full stack (Frontend Selector -> Backend -> Deepgram).
+
+### Notable Approaches
+-   **Step-by-Step Planning**: The agent utilized a `task.md` file to break down complex features (like Mobile porting) into granular, trackable steps.
+-   **Proactive Verification**: Used verification scripts (like `testParseTaskMultilingual.ts`) to validate NLP logic before integrating it into the main app.
 
 ---
 
