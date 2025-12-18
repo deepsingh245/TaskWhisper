@@ -9,6 +9,8 @@ import { useRouter } from 'expo-router';
 import { useAppDispatch, useAppSelector } from '@/app/store/hooks';
 import { fetchTasks } from '@/app/store/thunks/taskThunks';
 import { Task, TaskStatus } from '@/app/store/types';
+import { DraxProvider, DraxView } from 'react-native-drax';
+import { updateTask } from '@/app/store/thunks/taskThunks';
 
 const { width } = Dimensions.get('window');
 
@@ -49,32 +51,58 @@ export default function DashboardScreen() {
   };
 
   const renderBoardView = () => (
-    <ScrollView
-      horizontal
-      pagingEnabled={false}
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.boardContainer}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
-      {[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.DONE].map((status) => (
-        <View key={status} style={[styles.column, { width: width * 0.85, backgroundColor: colorScheme === 'dark' ? '#1e293b' : '#f1f5f9' }]}>
-          <View style={styles.columnHeader}>
-            <Text style={[styles.columnTitle, { color: colors.text }]}>{status}</Text>
-            <View style={[styles.countBadge, { backgroundColor: colors.tint }]}>
-              <Text style={styles.countText}>{tasks.filter(t => t.status === status).length}</Text>
+    <DraxProvider>
+      <ScrollView
+        horizontal
+        pagingEnabled={false}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.boardContainer}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.DONE].map((status) => (
+          <DraxView
+            key={status}
+            style={[styles.column, { width: width * 0.85, backgroundColor: colorScheme === 'dark' ? '#1e293b' : '#f1f5f9' }]}
+            receivingStyle={[styles.column, { width: width * 0.85, backgroundColor: colors.tint + '10', borderColor: colors.tint, borderWidth: 2 }]}
+            onReceiveDragDrop={({ dragged: { payload } }) => {
+              const task = tasks.find(t => t.id === payload);
+              if (task && task.status !== status) {
+                dispatch(updateTask({ id: payload, data: { status } }));
+              }
+            }}
+          >
+            <View style={styles.columnHeader}>
+              <Text style={[styles.columnTitle, { color: colors.text }]}>{status}</Text>
+              <View style={[styles.countBadge, { backgroundColor: colors.tint }]}>
+                <Text style={styles.countText}>{tasks.filter(t => t.status === status).length}</Text>
+              </View>
             </View>
-          </View>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {tasks.filter(t => t.status === status).map(task => (
-              <TaskCard key={task.id} task={task} onPress={() => router.push({ pathname: '/modal', params: { taskId: task.id } })} />
-            ))}
-            {tasks.filter(t => t.status === status).length === 0 && (
-              <Text style={{ textAlign: 'center', color: colors.icon, marginTop: 20 }}>No tasks</Text>
-            )}
-          </ScrollView>
-        </View>
-      ))}
-    </ScrollView>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {tasks.filter(t => t.status === status).map(task => (
+                <DraxView
+                  key={task.id}
+                  style={{ marginBottom: 10 }}
+                  draggingStyle={{ opacity: 0.2 }}
+                  dragPayload={task.id}
+                  longPressDelay={200}
+                  onDragStart={() => {
+                    console.log('start drag');
+                  }}
+                  onDragEnd={() => {
+                    console.log('end drag');
+                  }}
+                >
+                  <TaskCard task={task} onPress={() => router.push({ pathname: '/modal', params: { taskId: task.id } })} />
+                </DraxView>
+              ))}
+              {tasks.filter(t => t.status === status).length === 0 && (
+                <Text style={{ textAlign: 'center', color: colors.icon, marginTop: 20 }}>No tasks</Text>
+              )}
+            </ScrollView>
+          </DraxView>
+        ))}
+      </ScrollView>
+    </DraxProvider>
   );
 
   const renderListView = () => (

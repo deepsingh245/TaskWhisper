@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -38,106 +38,116 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[colors.background, colors.tint, colors.background]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.background}
-      />
+      <KeyboardAvoidingView
+        // behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1, width: '100%' }}
+      >
+        <LinearGradient
+          colors={[colors.background, colors.tint, colors.background]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.background}
+        />
 
-      {/* Background Orbs */}
-      <View style={[styles.orb, { top: '10%', left: '-10%', backgroundColor: colors.primary, opacity: 0.2 }]} />
-      <View style={[styles.orb, { bottom: '10%', right: '-10%', backgroundColor: colors.secondary, opacity: 0.2 }]} />
+        {/* Background Orbs */}
+        <View style={[styles.orb, { top: '10%', left: '-10%', backgroundColor: colors.primary, opacity: 0.2 }]} />
+        <View style={[styles.orb, { bottom: '10%', right: '-10%', backgroundColor: colors.secondary, opacity: 0.2 }]} />
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.content}>
-        <BlurView intensity={80} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.card}>
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>Welcome back</Text>
-            <Text style={[styles.subtitle, { color: colors.icon }]}>
-              Enter your credentials to access your account
-            </Text>
-          </View>
 
-          {error && (
-            <View style={{ marginBottom: 10, padding: 10, backgroundColor: 'rgba(255, 0, 0, 0.1)', borderRadius: 8 }}>
-              <Text style={{ color: 'red', textAlign: 'center' }}>{error}</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <BlurView intensity={80} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.card}>
+            <View style={styles.header}>
+              <Text style={[styles.title, { color: colors.text }]}>Welcome back</Text>
+              <Text style={[styles.subtitle, { color: colors.icon }]}>
+                Enter your credentials to access your account
+              </Text>
             </View>
-          )}
 
-          <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>Email</Text>
-              <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)' }]}>
-                <Mail size={20} color={colors.icon} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  placeholder="name@example.com"
-                  placeholderTextColor={colors.icon}
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                />
+            {error && (
+              <View style={{ marginBottom: 10, padding: 10, backgroundColor: 'rgba(255, 0, 0, 0.1)', borderRadius: 8 }}>
+                <Text style={{ color: 'red', textAlign: 'center' }}>{error}</Text>
               </View>
-            </View>
+            )}
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>Password</Text>
-              <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)' }]}>
-                <Lock size={20} color={colors.icon} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  placeholder="••••••••"
-                  placeholderTextColor={colors.icon}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                />
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.button, { backgroundColor: colors.tint }]}
-              onPress={handleLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <View style={styles.buttonContent}>
-                  <Text style={styles.buttonText}>Sign In</Text>
-                  <ArrowRight size={20} color="#fff" />
+            <View style={styles.form}>
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Email</Text>
+                <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)' }]}>
+                  <Mail size={20} color={colors.icon} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    placeholder="name@example.com"
+                    placeholderTextColor={colors.icon}
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
                 </View>
-              )}
-            </TouchableOpacity>
+              </View>
 
-            <View style={styles.dividerContainer}>
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.icon }]}>OR SIGN IN WITH</Text>
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Password</Text>
+                <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)' }]}>
+                  <Lock size={20} color={colors.icon} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    placeholder="••••••••"
+                    placeholderTextColor={colors.icon}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.button, { backgroundColor: colors.tint }]}
+                onPress={handleLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <View style={styles.buttonContent}>
+                    <Text style={styles.buttonText}>Sign In</Text>
+                    <ArrowRight size={20} color="#fff" />
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.dividerContainer}>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <Text style={[styles.dividerText, { color: colors.icon }]}>OR SIGN IN WITH</Text>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              </View>
+
+              <View style={styles.socialButtons}>
+                <TouchableOpacity style={[styles.socialButton, { borderColor: colors.border, backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)' }]}>
+                  <Chrome size={20} color={colors.text} />
+                  <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.socialButton, { borderColor: colors.border, backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)' }]}>
+                  <Facebook size={20} color="#1877F2" />
+                  <Text style={[styles.socialButtonText, { color: colors.text }]}>Facebook</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            <View style={styles.socialButtons}>
-              <TouchableOpacity style={[styles.socialButton, { borderColor: colors.border, backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)' }]}>
-                <Chrome size={20} color={colors.text} />
-                <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.socialButton, { borderColor: colors.border, backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)' }]}>
-                <Facebook size={20} color="#1877F2" />
-                <Text style={[styles.socialButtonText, { color: colors.text }]}>Facebook</Text>
-              </TouchableOpacity>
+            <View style={styles.footer}>
+              <Text style={[styles.footerText, { color: colors.icon }]}>Don't have an account? </Text>
+              <Link href="/auth/signup" asChild>
+                <TouchableOpacity>
+                  <Text style={[styles.link, { color: colors.tint }]}>Sign up</Text>
+                </TouchableOpacity>
+              </Link>
             </View>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={[styles.footerText, { color: colors.icon }]}>Don't have an account? </Text>
-            <Link href="/auth/signup" asChild>
-              <TouchableOpacity>
-                <Text style={[styles.link, { color: colors.tint }]}>Sign up</Text>
-              </TouchableOpacity>
-            </Link>
-          </View>
-        </BlurView>
+          </BlurView>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
@@ -163,10 +173,11 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     // filter: 'blur(50px)', // Removed as it is not supported in RN
   },
-  content: {
-    width: '100%',
-    padding: 20,
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   card: {
     width: '100%',

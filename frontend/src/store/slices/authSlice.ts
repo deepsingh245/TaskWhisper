@@ -6,11 +6,7 @@ import { getAccessToken, clearAccessToken } from "../services/tokenService";
 const initialState: AuthState = {
   user: null,
   accessToken: getAccessToken(),
-  refreshToken: null, // We might not store refresh token in state if it's HttpOnly cookie, but requirement said store it. 
-                      // Usually refresh tokens are HttpOnly cookies. 
-                      // If the user requirement explicitly said "store access + refresh token" in slice, I will add it.
-                      // But often refresh token is not accessible to JS.
-                      // I'll keep it null for now as it's likely HttpOnly.
+  refreshToken: null,
   isAuthenticated: !!getAccessToken(),
   isLoading: false,
   error: null,

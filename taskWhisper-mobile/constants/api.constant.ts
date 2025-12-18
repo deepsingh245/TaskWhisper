@@ -1,4 +1,4 @@
-export const API_BASE_URL = "https://984f4d7e7fe0.ngrok-free.app";
+export const API_BASE_URL = "https://6ba0274fbb73.ngrok-free.app";
 
 export const API_ROUTES = {
   AUTH: {

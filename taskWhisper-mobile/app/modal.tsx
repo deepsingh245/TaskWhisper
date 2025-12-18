@@ -10,8 +10,10 @@ import { Audio } from 'expo-av';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAppDispatch, useAppSelector } from './store/hooks';
 import { createTask, updateTask } from './store/thunks/taskThunks';
-import { TaskPriority, TaskStatus } from './store/types';
+import { Picker } from '@react-native-picker/picker';
+
 import { uploadVoiceTaskFn } from '@/lib/voicetask';
+import { TaskPriority, TaskStatus } from '@/constants/api.constant';
 
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -237,31 +239,32 @@ export default function TaskModal() {
               <View style={[styles.inputGroup, { flex: 1 }]}>
                 <FormLabel>Priority</FormLabel>
                 <View style={[styles.selectContainer, { borderColor: colors.border, backgroundColor: colors.card }]}>
-                  {/* Simplistic Select using Touchable for now - ideally a modal or picker */}
-                  <TouchableOpacity onPress={() => {
-                    const priorities = Object.values(TaskPriority);
-                    const currentIndex = priorities.indexOf(priority);
-                    const nextIndex = (currentIndex + 1) % priorities.length;
-                    setPriority(priorities[nextIndex]);
-                  }} style={styles.selectButton}>
-                    <Text style={{ color: colors.text, textTransform: 'capitalize' }}>{priority}</Text>
-                    <ChevronDown size={16} color={colors.icon} />
-                  </TouchableOpacity>
+                  <Picker
+                    selectedValue={priority}
+                    onValueChange={(itemValue: TaskPriority) => setPriority(itemValue)}
+                    style={styles.selectButton}
+                    dropdownIconColor={colors.icon}
+                  >
+                    {Object.values(TaskPriority).map((p) => (
+                      <Picker.Item key={p} label={p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()} value={p} />
+                    ))}
+                  </Picker>
                 </View>
               </View>
 
               <View style={[styles.inputGroup, { flex: 1 }]}>
                 <FormLabel>Status</FormLabel>
                 <View style={[styles.selectContainer, { borderColor: colors.border, backgroundColor: colors.card }]}>
-                  <TouchableOpacity onPress={() => {
-                    const statuses = Object.values(TaskStatus);
-                    const currentIndex = statuses.indexOf(status);
-                    const nextIndex = (currentIndex + 1) % statuses.length;
-                    setStatus(statuses[nextIndex]);
-                  }} style={styles.selectButton}>
-                    <Text style={{ color: colors.text, textTransform: 'capitalize' }}>{status.replace('-', ' ')}</Text>
-                    <ChevronDown size={16} color={colors.icon} />
-                  </TouchableOpacity>
+                  <Picker
+                    selectedValue={status}
+                    onValueChange={(itemValue: TaskStatus) => setStatus(itemValue)}
+                    style={styles.selectButton}
+                    dropdownIconColor={colors.icon}
+                  >
+                    {Object.values(TaskStatus).map((s) => (
+                      <Picker.Item key={s} label={s.replace('-', ' ')} value={s} />
+                    ))}
+                  </Picker>
                 </View>
               </View>
             </View>
